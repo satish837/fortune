@@ -2805,7 +2805,7 @@ export default function Create() {
           a.click();
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-          console.log("��� Video download triggered");
+          console.log("✅ Video download triggered");
         } catch (dlErr) {
           console.warn("⚠️ Direct download failed, opening in new tab:", dlErr);
           window.open(videoUrl, "_blank", "noopener,noreferrer");
@@ -2942,22 +2942,27 @@ export default function Create() {
   };
 
   const shareToFacebook = () => {
-    if (cloudinaryVideoUrl) {
-      // Track Facebook sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "Facebook",
-        });
-      }
+    const urlToShare =
+      (cloudinaryVideoUrl && (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      recordedVideoUrl ||
+      null;
 
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const socialUrl =
-        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(socialUrl)}&quote=${encodeURIComponent(message)}`;
-      window.open(facebookUrl, "_blank");
+    if (!urlToShare) {
+      alert("Please generate a video first before sharing to Facebook.");
+      return;
     }
+
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Share", {
+        content_name: "Diwali Postcard Video",
+        content_category: "Social Sharing",
+        method: "Facebook",
+      });
+    }
+
+    const message = "Check out my festive Diwali postcard video! 🎆✨";
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}&quote=${encodeURIComponent(message)}`;
+    window.open(facebookUrl, "_blank", "noopener,noreferrer");
   };
 
   const shareToTelegram = () => {
