@@ -610,24 +610,6 @@ export default function Create() {
       })();
       const optimizedFile = new File([optimizedBlob], file.name, { type: file.type, lastModified: Date.now() });
       
-      if (!response.ok) {
-        throw new Error(`TinyPNG API error: ${response.status} ${response.statusText}`);
-      }
-      
-      const result = await response.json();
-      console.log('✅ TinyPNG optimization result:', result);
-      
-      // Download the optimized image
-      const optimizedResponse = await fetch(result.output.url);
-      if (!optimizedResponse.ok) {
-        throw new Error('Failed to download optimized image');
-      }
-      
-      const optimizedBlob = await optimizedResponse.blob();
-      const optimizedFile = new File([optimizedBlob], file.name, {
-        type: file.type,
-        lastModified: Date.now()
-      });
       
       const compressionRatio = ((1 - optimizedFile.size / file.size) * 100);
       
