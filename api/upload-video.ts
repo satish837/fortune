@@ -112,7 +112,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Create WhatsApp-optimized MP4 URL
     const versionSegment = uploadData.version ? `/v${uploadData.version}` : '';
-    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive,br_200k${versionSegment}/${uploadData.public_id}.mp4`;
+    const transform = 'f_mp4,q_auto:best';
+    const baseName = (uploadData.public_id || '').split('/').pop();
+    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${baseName}.mp4`;
 
     res.status(200).json({
       success: true,
