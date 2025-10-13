@@ -3772,13 +3772,7 @@ export default function Create() {
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
-                    {/* TikTok */}
-                    <Button onClick={shareToTikTok} className="h-12 bg-black hover:bg-gray-800 text-white">
-                      <div className="flex flex-col items-center">
-                        <span className="text-lg">🎵</span>
-                        <span className="text-xs font-medium">TikTok</span>
-                      </div>
-                    </Button>
+                    
                     {/* WhatsApp */}
                     <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 hover:bg-green-600 text-white">
                       <div className="flex flex-col items-center">
@@ -3786,13 +3780,7 @@ export default function Create() {
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
-                    {/* Twitter */}
-                    <Button onClick={shareToTwitter} className="h-12 bg-blue-400 hover:bg-blue-500 text-white">
-                      <div className="flex flex-col items-center">
-                        <span className="text-lg">🐦</span>
-                        <span className="text-xs font-medium">Twitter</span>
-                      </div>
-                    </Button>
+                   
                     {/* Facebook */}
                     <Button onClick={shareToFacebook} className="h-12 bg-blue-600 hover:bg-blue-700 text-white">
                       <div className="flex flex-col items-center">
@@ -3800,13 +3788,7 @@ export default function Create() {
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
-                    {/* Telegram */}
-                    <Button onClick={shareToTelegram} className="h-12 bg-blue-500 hover:bg-blue-600 text-white">
-                      <div className="flex flex-col items-center">
-                        <span className="text-lg">✈️</span>
-                        <span className="text-xs font-medium">Telegram</span>
-                      </div>
-                    </Button>
+                   
                   </div>
 
                   <div className="text-center">
