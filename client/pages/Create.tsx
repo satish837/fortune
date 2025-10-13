@@ -2571,9 +2571,25 @@ export default function Create() {
           // Upload the video using our API endpoint
           console.log("🔄 Uploading video via API...");
 
-          // Fetch the video blob
-          const response = await fetch(recordedVideoUrl);
-          const blob = await response.blob();
+              // Try to fetch the video blob from the recorded URL. If that fails (some environments block fetch on blob: URLs),
+          // fall back to using the in-memory recorded chunks.
+          let blob: Blob | null = null;
+          try {
+            const response = await fetch(recordedVideoUrl);
+            if (!response.ok) {
+              throw new Error(`Failed to fetch recorded video: ${response.status}`);
+            }
+            blob = await response.blob();
+          } catch (fetchErr) {
+            console.warn("⚠️ Could not fetch recordedVideoUrl, falling back to recordedChunksRef:", fetchErr);
+            if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+              blob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+            }
+          }
+
+          if (!blob) {
+            throw new Error("Unable to obtain video blob for upload");
+          }
 
           // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
@@ -2583,28 +2599,36 @@ export default function Create() {
             cloudinaryConfig: cloudinaryConfig,
           });
 
-          const uploadResponse = await fetch("/api/upload-video", {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/octet-stream",
-              "x-filename": `festive-postcard-${Date.now()}.mp4`,
-            },
-            body: arrayBuffer,
-          });
+          let uploadResponse: Response;
+          try {
+            uploadResponse = await fetch("/api/upload-video", {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/octet-stream",
+                "x-filename": `festive-postcard-${Date.now()}.mp4`,
+              },
+              body: arrayBuffer,
+            });
+          } catch (netErr) {
+            console.error("❌ Network error uploading to server:", netErr);
+            throw netErr;
+          }
 
           console.log("📡 Upload response status:", uploadResponse.status);
 
           if (!uploadResponse.ok) {
-            const errorData = await uploadResponse.json();
-            throw new Error(
-              `Upload failed: ${uploadResponse.status} - ${errorData.error || errorData.details}`,
-            );
+            const errorText = await uploadResponse.text().catch(() => "");
+            throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
           }
 
-          const uploadData = await uploadResponse.json();
+          const uploadData = await uploadResponse.json().catch((e) => {
+            console.warn("⚠️ Failed to parse upload response JSON:", e);
+            return null;
+          });
           console.log("✅ Video uploaded successfully:", uploadData);
 
-          videoUrl = uploadData.url || uploadData.secure_url || uploadData.originalUrl || videoUrl;
+          videoUrl =
+            (uploadData && (uploadData.url || uploadData.secure_url || uploadData.secureUrl || uploadData.originalUrl)) || videoUrl;
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
@@ -2622,8 +2646,24 @@ export default function Create() {
 
         // Prefer a direct download without navigating away
         try {
-          const fetched = await fetch(videoUrl, { mode: "cors" });
-          const finalBlob = await fetched.blob();
+          // If videoUrl is a blob URL we might not be able to fetch it in some environments; handle accordingly
+          let finalBlob: Blob | null = null;
+          try {
+            const fetched = await fetch(videoUrl);
+            if (fetched.ok) finalBlob = await fetched.blob();
+          } catch (e) {
+            console.warn("⚠️ fetch(videoUrl) failed, will try recordedChunksRef if available:", e);
+          }
+
+          if (!finalBlob && recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+            finalBlob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+          }
+
+          if (!finalBlob) {
+            // Last resort: open the URL in a new tab
+            throw new Error("Could not obtain downloadable blob");
+          }
+
           const objectUrl = URL.createObjectURL(finalBlob);
           const a = document.createElement("a");
           a.href = objectUrl;
