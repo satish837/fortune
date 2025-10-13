@@ -2805,7 +2805,7 @@ export default function Create() {
           a.click();
           document.body.removeChild(a);
           setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-          console.log("✅ Video download triggered");
+          console.log("��� Video download triggered");
         } catch (dlErr) {
           console.warn("⚠️ Direct download failed, opening in new tab:", dlErr);
           window.open(videoUrl, "_blank", "noopener,noreferrer");
@@ -2874,20 +2874,29 @@ export default function Create() {
   };
 
   const shareToWhatsApp = () => {
-    if (cloudinaryVideoUrl) {
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
+    // Determine best URL to share (cloud first, then recorded)
+    const urlToShare =
+      (cloudinaryVideoUrl && (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      recordedVideoUrl ||
+      null;
 
-      // Track WhatsApp sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
+    if (!urlToShare) {
+      alert("Please generate a video first before sharing to WhatsApp.");
+      return;
+    }
+
+    const message = "Check out my festive Diwali postcard video! 🎆✨";
+
+    // Track
+    if (typeof window !== "undefined") {
+      if ((window as any).fbq) {
         (window as any).fbq("track", "Share", {
           content_name: "Diwali Postcard Video",
           content_category: "Social Sharing",
           method: "WhatsApp",
         });
       }
-
-      // Track with Google Tag Manager
-      if (typeof window !== "undefined" && (window as any).dataLayer) {
+      if ((window as any).dataLayer) {
         (window as any).dataLayer.push({
           event: "social_share",
           content_name: "Diwali Postcard Video",
@@ -2895,29 +2904,11 @@ export default function Create() {
           method: "WhatsApp",
         });
       }
-
-      // Use the same social URL format as Copy Video Link
-      const socialUrl =
-        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + socialUrl)}`;
-      window.open(whatsappUrl, "_blank");
-    } else if (recordedVideoUrl) {
-      // Track WhatsApp sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "WhatsApp",
-        });
-      }
-
-      // Fallback to local video URL if Cloudinary upload is not ready
-      const message = "Check out my festive Diwali postcard video! ���✨";
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + recordedVideoUrl)}`;
-      window.open(whatsappUrl, "_blank");
-    } else {
-      alert("Please generate a video first before sharing to WhatsApp.");
     }
+
+    // Use web-friendly WhatsApp share link
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message + " " + urlToShare)}`;
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   const shareToTwitter = () => {
