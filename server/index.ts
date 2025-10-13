@@ -9,6 +9,7 @@ import { handleExistingUserOTP } from "./routes/existing-user-otp";
 import { handleTinyPNGConfig } from "./routes/tinypng-config";
 import { handleOptimizeImage } from "./routes/optimize-image";
 import { handleCloudinaryConfig } from "./routes/cloudinary-config";
+import { handleUploadVideo } from "./routes/upload-video";
 
 const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
 
@@ -36,6 +37,7 @@ export function createServer() {
   app.post("/api/existing-user-otp", handleExistingUserOTP);
   app.get("/api/tinypng-config", handleTinyPNGConfig);
   app.post("/api/optimize-image", handleOptimizeImage);
+  app.post("/api/upload-video", handleUploadVideo);
   
   // Get all users (for testing purposes)
   app.get("/api/users", async (req, res) => {
