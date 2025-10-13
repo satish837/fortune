@@ -10,7 +10,7 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { BarChart3, LogOut } from "lucide-react";
+import { BarChart3, LogOut, Instagram, Facebook, MessageCircle } from "lucide-react";
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
 let RecorderStatus: any = null;
@@ -2136,7 +2136,7 @@ export default function Create() {
                   frameCount++;
                   if (frameCount % 30 === 0) {
                     // Log every 30 frames to reduce spam
-                    console.log(`📸 Frame ${frameCount} recorded`);
+                    console.log(`���� Frame ${frameCount} recorded`);
                   }
                 } catch (error) {
                   console.error("Error recording frame:", error);
@@ -2764,14 +2764,9 @@ export default function Create() {
         });
       }
 
-      // Add WhatsApp-optimized transformations to the Cloudinary URL
-      // This ensures the video is in a format WhatsApp can handle
-      const optimizedUrl = cloudinaryVideoUrl.replace(
-        "/upload/",
-        "/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive/",
-      );
-
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + optimizedUrl)}`;
+      // Use the same social URL format as Copy Video Link
+      const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + socialUrl)}`;
       window.open(whatsappUrl, "_blank");
     } else if (recordedVideoUrl) {
       // Track WhatsApp sharing
@@ -3818,7 +3813,7 @@ export default function Create() {
                     {/* Instagram */}
                     <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
                       <div className="flex flex-col items-center">
-                        <span className="text-lg">📷</span>
+                        <Instagram className="w-5 h-5" />
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
@@ -3826,7 +3821,7 @@ export default function Create() {
                     {/* WhatsApp */}
                     <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 hover:bg-green-600 text-white">
                       <div className="flex flex-col items-center">
-                        <span className="text-lg">💬</span>
+                        <MessageCircle className="w-5 h-5" />
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
@@ -3834,7 +3829,7 @@ export default function Create() {
                     {/* Facebook */}
                     <Button onClick={shareToFacebook} className="h-12 bg-blue-600 hover:bg-blue-700 text-white">
                       <div className="flex flex-col items-center">
-                        <span className="text-lg">👥</span>
+                        <Facebook className="w-5 h-5" />
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
