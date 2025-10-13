@@ -466,11 +466,31 @@ export const handleGenerate: RequestHandler = async (req, res) => {
       return;
     }
 
-    const json = await run.json();
+    // Read response safely (may be JSON or text)
+    let json: any = null;
+    try {
+      json = await run.json();
+    } catch (e) {
+      // If parsing fails, try to read as text
+      try {
+        json = { error: await run.text() };
+      } catch (e2) {
+        json = { error: 'Unknown error from model service' };
+      }
+    }
+
     if (!run.ok) {
+      console.error('FAL model returned error:', run.status, json);
+      if (run.status === 403) {
+        // Friendly message for authorization/quota issues
+        res.status(502).json({ error: 'Image generation service refused the request (403). Please check FAL_KEY, account access or quota.' });
+        return;
+      }
+
       res.status(run.status).json({ error: json?.error || JSON.stringify(json) });
       return;
     }
+
     const imageUrl = extractImageUrl(json);
     if (!imageUrl) {
       res.status(500).json({ error: "Model response did not include an image URL" });
