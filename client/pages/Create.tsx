@@ -14,6 +14,39 @@ import { BarChart3, LogOut } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faInstagram, faFacebook, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { toast } from "@/hooks/use-toast";
+// In dev, Vite's error overlay can crash when console logs receive complex/circular objects.
+// Patch console.error to safely serialize arguments to primitives to avoid the overlay throwing.
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  const originalConsoleError = console.error.bind(console);
+  const getCircularReplacer = () => {
+    const seen = new WeakSet();
+    return (_key: string, value: any) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return "[Circular]";
+        seen.add(value);
+      }
+      return value;
+    };
+  };
+
+  console.error = (...args: any[]) => {
+    try {
+      const safeArgs = args.map((a) => {
+        if (a instanceof Error) return a.stack || a.message;
+        if (typeof a === "string") return a;
+        try {
+          return JSON.stringify(a, getCircularReplacer());
+        } catch (e) {
+          return String(a);
+        }
+      });
+      originalConsoleError(...safeArgs);
+    } catch (e) {
+      originalConsoleError("[console.error serialization failed]", String(e));
+    }
+  };
+}
+
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
 let RecorderStatus: any = null;
