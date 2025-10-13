@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { BarChart3, LogOut, Instagram, Facebook, MessageCircle } from "lucide-react";
+import { toast } from "@/hooks/use-toast";
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
 let RecorderStatus: any = null;
@@ -527,20 +528,67 @@ export default function Create() {
     };
   }, [navigate]);
 
-  // Load Cloudinary configuration
+  // Load Cloudinary configuration with better error handling and diagnostics
   useEffect(() => {
     const loadCloudinaryConfig = async () => {
       try {
-        const response = await fetch("/api/cloudinary-config");
-        if (response.ok) {
-          const config = await response.json();
-          setCloudinaryConfig(config);
-          console.log("✅ Cloudinary config loaded:", config);
-        } else {
-          console.error("❌ Failed to load Cloudinary config");
+        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        let response: Response | null = null;
+
+        // Try absolute origin first (handles some proxy edge-cases), then fallback to relative
+        const tryUrls = [`${origin}/api/cloudinary-config`, `/api/cloudinary-config`];
+        for (const url of tryUrls) {
+          try {
+            response = await fetch(url);
+            if (response && response.ok) {
+              break;
+            }
+          } catch (err) {
+            console.warn(`Fetch to ${url} failed:`, err);
+            response = null;
+          }
         }
-      } catch (error) {
+
+        if (!response) {
+          throw new Error("All fetch attempts failed for /api/cloudinary-config");
+        }
+
+        if (!response.ok) {
+          const text = await response.text().catch(() => "");
+          throw new Error(`Non-ok response: ${response.status} ${text}`);
+        }
+
+        const config = await response.json();
+        setCloudinaryConfig(config);
+        console.log("✅ Cloudinary config loaded:", config);
+      } catch (error: any) {
         console.error("❌ Error loading Cloudinary config:", error);
+        try {
+          toast({
+            title: "Cloudinary config unavailable",
+            description:
+              "Could not load Cloudinary configuration from the API. Some features (upload/share) may be limited.",
+          });
+        } catch (e) {
+          // ignore toast errors
+        }
+
+        // Attempt to fetch diagnostics endpoint to surface environment info
+        try {
+          const diagResp = await fetch("/api/test-env");
+          if (diagResp.ok) {
+            const diag = await diagResp.json();
+            console.info("API diagnostics:", diag);
+            try {
+              toast({
+                title: "Diagnostics available",
+                description: "Server diagnostics printed to console.",
+              });
+            } catch (e) {}
+          }
+        } catch (diagErr) {
+          console.warn("Diagnostics fetch failed:", diagErr);
+        }
       }
     };
 
