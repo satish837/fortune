@@ -10,14 +10,47 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { BarChart3, LogOut } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import {
-  BarChart3,
-  LogOut,
-  Instagram,
-  Facebook,
-  MessageCircle,
-} from "lucide-react";
+  faInstagram,
+  faFacebook,
+  faWhatsapp,
+} from "@fortawesome/free-brands-svg-icons";
 import { toast } from "@/hooks/use-toast";
+// In dev, Vite's error overlay can crash when console logs receive complex/circular objects.
+// Patch console.error to safely serialize arguments to primitives to avoid the overlay throwing.
+if (typeof window !== "undefined" && process.env.NODE_ENV !== "production") {
+  const originalConsoleError = console.error.bind(console);
+  const getCircularReplacer = () => {
+    const seen = new WeakSet();
+    return (_key: string, value: any) => {
+      if (typeof value === "object" && value !== null) {
+        if (seen.has(value)) return "[Circular]";
+        seen.add(value);
+      }
+      return value;
+    };
+  };
+
+  console.error = (...args: any[]) => {
+    try {
+      const safeArgs = args.map((a) => {
+        if (a instanceof Error) return a.stack || a.message;
+        if (typeof a === "string") return a;
+        try {
+          return JSON.stringify(a, getCircularReplacer());
+        } catch (e) {
+          return String(a);
+        }
+      });
+      originalConsoleError(...safeArgs);
+    } catch (e) {
+      originalConsoleError("[console.error serialization failed]", String(e));
+    }
+  };
+}
+
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
 let RecorderStatus: any = null;
@@ -2791,18 +2824,28 @@ export default function Create() {
     }
   };
 
-  // Build standardized social URL: https://res.cloudinary.com/<host>/video/upload/f_mp4,q_auto:best/v{version}/diwali-postcards/videos/{filename}.mp4
+  // Build standardized social URL for Cloudinary by inserting an upload transform
+  // Example: https://res.cloudinary.com/<cloud_name>/video/upload/{transform}/v12345/.../file.mp4
   const buildSocialUrl = (url?: string | null) => {
     if (!url) return null;
     try {
       const parsed = new URL(url);
-      const filename = parsed.pathname.split("/").pop() || "";
-      const hostname = parsed.hostname; // includes cloud name like dsol5tcu0
-      // Try to extract version from the path: /v12345/
-      const versionMatch = parsed.pathname.match(/\/v(\d+)\//);
-      const versionSegment = versionMatch ? `/v${versionMatch[1]}` : "";
+      const fullPath = parsed.pathname; // e.g. /<cloud_name>/video/upload/v1234/path/to/file.mp4
+
+      // Find the upload segment in the path
+      const uploadIndex = fullPath.indexOf("/upload/");
+      if (uploadIndex === -1) {
+        // Not a Cloudinary-style URL we know how to transform
+        return url;
+      }
+
+      const beforeUpload = fullPath.substring(0, uploadIndex); // includes cloud name
+      const afterUpload = fullPath.substring(uploadIndex + "/upload/".length); // rest after upload/
+
       const transform = "f_mp4,q_auto:best";
-      return `${parsed.protocol}//${hostname}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${filename}`;
+
+      // Reconstruct URL preserving host and cloud name
+      return `${parsed.protocol}//${parsed.hostname}${beforeUpload}/upload/${transform}/${afterUpload}`;
     } catch (e) {
       return null;
     }
@@ -2835,20 +2878,30 @@ export default function Create() {
   };
 
   const shareToWhatsApp = () => {
-    if (cloudinaryVideoUrl) {
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
+    // Determine best URL to share (cloud first, then recorded)
+    const urlToShare =
+      (cloudinaryVideoUrl &&
+        (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      recordedVideoUrl ||
+      null;
 
-      // Track WhatsApp sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
+    if (!urlToShare) {
+      alert("Please generate a video first before sharing to WhatsApp.");
+      return;
+    }
+
+    const message = "Check out my festive Diwali postcard video! 🎆✨";
+
+    // Track
+    if (typeof window !== "undefined") {
+      if ((window as any).fbq) {
         (window as any).fbq("track", "Share", {
           content_name: "Diwali Postcard Video",
           content_category: "Social Sharing",
           method: "WhatsApp",
         });
       }
-
-      // Track with Google Tag Manager
-      if (typeof window !== "undefined" && (window as any).dataLayer) {
+      if ((window as any).dataLayer) {
         (window as any).dataLayer.push({
           event: "social_share",
           content_name: "Diwali Postcard Video",
@@ -2856,29 +2909,11 @@ export default function Create() {
           method: "WhatsApp",
         });
       }
-
-      // Use the same social URL format as Copy Video Link
-      const socialUrl =
-        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + socialUrl)}`;
-      window.open(whatsappUrl, "_blank");
-    } else if (recordedVideoUrl) {
-      // Track WhatsApp sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "WhatsApp",
-        });
-      }
-
-      // Fallback to local video URL if Cloudinary upload is not ready
-      const message = "Check out my festive Diwali postcard video! ���✨";
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + recordedVideoUrl)}`;
-      window.open(whatsappUrl, "_blank");
-    } else {
-      alert("Please generate a video first before sharing to WhatsApp.");
     }
+
+    // Use web-friendly WhatsApp share link
+    const whatsappUrl = `https://api.whatsapp.com/send?text=${encodeURIComponent(message + " " + urlToShare)}`;
+    window.open(whatsappUrl, "_blank", "noopener,noreferrer");
   };
 
   const shareToTwitter = () => {
@@ -2912,22 +2947,28 @@ export default function Create() {
   };
 
   const shareToFacebook = () => {
-    if (cloudinaryVideoUrl) {
-      // Track Facebook sharing
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "Facebook",
-        });
-      }
+    const urlToShare =
+      (cloudinaryVideoUrl &&
+        (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      recordedVideoUrl ||
+      null;
 
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const socialUrl =
-        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(socialUrl)}&quote=${encodeURIComponent(message)}`;
-      window.open(facebookUrl, "_blank");
+    if (!urlToShare) {
+      alert("Please generate a video first before sharing to Facebook.");
+      return;
     }
+
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Share", {
+        content_name: "Diwali Postcard Video",
+        content_category: "Social Sharing",
+        method: "Facebook",
+      });
+    }
+
+    const message = "Check out my festive Diwali postcard video! 🎆✨";
+    const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}&quote=${encodeURIComponent(message)}`;
+    window.open(facebookUrl, "_blank", "noopener,noreferrer");
   };
 
   const shareToTelegram = () => {
@@ -2950,31 +2991,44 @@ export default function Create() {
   };
 
   const copyVideoLink = async () => {
-    if (cloudinaryVideoUrl) {
-      // Track link copying
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "Copy Link",
-        });
-      }
+    // Prefer optimized social URL when available; fallback to recorded local URL
+    const urlFromCloud = cloudinaryVideoUrl
+      ? buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl
+      : null;
+    const urlToCopy = urlFromCloud || recordedVideoUrl || "";
 
-      try {
-        const socialUrl =
-          buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-        await navigator.clipboard.writeText(socialUrl);
-        alert("Video link copied to clipboard! You can now paste it anywhere.");
-      } catch (error) {
-        // Fallback for older browsers
+    if (!urlToCopy) {
+      alert("Please generate a video first before copying a link.");
+      return;
+    }
+
+    // Track link copying
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Share", {
+        content_name: "Diwali Postcard Video",
+        content_category: "Social Sharing",
+        method: "Copy Link",
+      });
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(urlToCopy);
+      } else {
         const textArea = document.createElement("textarea");
-        textArea.value = cloudinaryVideoUrl;
+        textArea.value = urlToCopy;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
         document.body.appendChild(textArea);
+        textArea.focus();
         textArea.select();
         document.execCommand("copy");
         document.body.removeChild(textArea);
-        alert("Video link copied to clipboard!");
       }
+      alert("Video link copied to clipboard!");
+    } catch (error) {
+      alert(`Failed to copy. You can manually copy this link: ${urlToCopy}`);
     }
   };
 
@@ -3268,13 +3322,6 @@ export default function Create() {
                 </p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-                <Button
-                  disabled={true}
-                  className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white"
-                  onClick={() => setStep(step - 1)}
-                >
-                  �� Previous
-                </Button>
                 <Button
                   disabled={!photoData}
                   className="flex-1 h-12 bg-orange-600 hover:bg-orange-700"
@@ -3715,7 +3762,7 @@ export default function Create() {
                       </p>
                     </div>
                     <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                      <p className="font-medium">📱 Maximum Compatibility</p>
+                      <p className="font-medium">�� Maximum Compatibility</p>
                       <p className="text-xs">
                         Videos are optimized for maximum compatibility (512x512,
                         15fps, H.264 Baseline)
@@ -3854,7 +3901,10 @@ export default function Create() {
                       className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <Instagram className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faInstagram}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
@@ -3865,7 +3915,10 @@ export default function Create() {
                       className="h-12 bg-green-500 hover:bg-green-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <MessageCircle className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faWhatsapp}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
@@ -3876,7 +3929,10 @@ export default function Create() {
                       className="h-12 bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <Facebook className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faFacebook}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
