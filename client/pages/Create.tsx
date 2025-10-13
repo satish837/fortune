@@ -3693,42 +3693,7 @@ export default function Create() {
                 </div>
               )}
 
-              {cloudinaryVideoUrl && (
-                <div className="text-center mb-4">
-                  <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 rounded-lg mb-4">
-                    <svg
-                      className="w-4 h-4 mr-2"
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Video ready for sharing!
-                  </div>
-
-                  {/* Mobile-optimized video preview */}
-                  <div className="mb-4">
-                    <video
-                      controls
-                      playsInline
-                      preload="metadata"
-                      className="w-full max-w-md mx-auto rounded-lg shadow-lg"
-                      style={{ maxHeight: "300px" }}
-                    >
-                      <source src={recordedVideoUrl} type="video/mp4" />
-                      Your browser does not support the video tag.
-                    </video>
-                    <p className="text-sm text-gray-600 mt-2">
-                      Preview your video above. If it doesn't play, try
-                      downloading it.
-                    </p>
-                  </div>
-                </div>
-              )}
+              
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                 <Button
