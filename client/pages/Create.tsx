@@ -580,25 +580,35 @@ export default function Create() {
       const formData = new FormData();
       formData.append('file', file);
       
-      // Get TinyPNG API key from server
-      const configResponse = await fetch('/api/tinypng-config');
-      if (!configResponse.ok) {
-        throw new Error('Failed to get TinyPNG configuration');
-      }
-      const config = await configResponse.json();
-      
-      if (!config.apiKey) {
-        throw new Error('TinyPNG API key not configured');
-      }
-      
-      // Call TinyPNG API
-      const response = await fetch('https://api.tinify.com/shrink', {
+      // Send file to server-side TinyPNG proxy
+      const dataUrl = await toBase64(file);
+      const proxyRes = await fetch('/api/optimize-image', {
         method: 'POST',
         headers: {
-          'Authorization': 'Basic ' + btoa(`api:${config.apiKey}`),
+          'Content-Type': 'application/json'
         },
-        body: formData
+        body: JSON.stringify({ dataUrl })
       });
+
+      if (!proxyRes.ok) {
+        const details = await proxyRes.text();
+        throw new Error(`TinyPNG proxy failed: ${proxyRes.status} - ${details}`);
+      }
+
+      const proxyJson = await proxyRes.json();
+      const optimizedDataUrl = proxyJson.dataUrl as string;
+      if (!optimizedDataUrl) throw new Error('TinyPNG proxy returned no data');
+
+      // Create blob from returned data URL
+      const base64 = optimizedDataUrl.split(',')[1];
+      const mime = optimizedDataUrl.split(',')[0].split(':')[1].split(';')[0];
+      const optimizedBlob = await (async () => {
+        const b = atob(base64);
+        const u8 = new Uint8Array(b.length);
+        for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+        return new Blob([u8], { type: mime });
+      })();
+      const optimizedFile = new File([optimizedBlob], file.name, { type: file.type, lastModified: Date.now() });
       
       if (!response.ok) {
         throw new Error(`TinyPNG API error: ${response.status} ${response.statusText}`);
