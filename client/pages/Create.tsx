@@ -2820,18 +2820,28 @@ export default function Create() {
     }
   };
 
-  // Build standardized social URL: https://res.cloudinary.com/<host>/video/upload/f_mp4,q_auto:best/v{version}/diwali-postcards/videos/{filename}.mp4
+  // Build standardized social URL for Cloudinary by inserting an upload transform
+  // Example: https://res.cloudinary.com/<cloud_name>/video/upload/{transform}/v12345/.../file.mp4
   const buildSocialUrl = (url?: string | null) => {
     if (!url) return null;
     try {
       const parsed = new URL(url);
-      const filename = parsed.pathname.split("/").pop() || "";
-      const hostname = parsed.hostname; // includes cloud name like dsol5tcu0
-      // Try to extract version from the path: /v12345/
-      const versionMatch = parsed.pathname.match(/\/v(\d+)\//);
-      const versionSegment = versionMatch ? `/v${versionMatch[1]}` : "";
-      const transform = "f_mp4,q_auto:best";
-      return `${parsed.protocol}//${hostname}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${filename}`;
+      const fullPath = parsed.pathname; // e.g. /<cloud_name>/video/upload/v1234/path/to/file.mp4
+
+      // Find the upload segment in the path
+      const uploadIndex = fullPath.indexOf('/upload/');
+      if (uploadIndex === -1) {
+        // Not a Cloudinary-style URL we know how to transform
+        return url;
+      }
+
+      const beforeUpload = fullPath.substring(0, uploadIndex); // includes cloud name
+      const afterUpload = fullPath.substring(uploadIndex + '/upload/'.length); // rest after upload/
+
+      const transform = 'f_mp4,q_auto:best';
+
+      // Reconstruct URL preserving host and cloud name
+      return `${parsed.protocol}//${parsed.hostname}${beforeUpload}/upload/${transform}/${afterUpload}`;
     } catch (e) {
       return null;
     }
