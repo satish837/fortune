@@ -1427,7 +1427,7 @@ export default function Create() {
           console.log('📤 Uploading mobile video to Cloudinary...');
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('�� Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
+          console.log('✅ Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
         } catch (error) {
           console.error('❌ Failed to upload mobile video to Cloudinary:', error);
         }
@@ -2145,7 +2145,7 @@ export default function Create() {
 
       // Fallback: send base64 JSON payload to server-side upload endpoint
       const arrayBuffer = await videoBlob.arrayBuffer();
-      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const base64 = arrayBufferToBase64(arrayBuffer);
       const videoData = `data:${videoBlob.type};base64,${base64}`;
 
       console.log('📤 Uploading via server-side signed upload (JSON payload)...');
@@ -2197,7 +2197,7 @@ export default function Create() {
           
           // Convert blob to base64 for API
           const arrayBuffer = await blob.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+          const base64 = arrayBufferToBase64(arrayBuffer);
           const videoData = `data:${blob.type};base64,${base64}`;
           
           console.log('🔧 Upload Details:', {
