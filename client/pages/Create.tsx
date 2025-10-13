@@ -2506,13 +2506,23 @@ export default function Create() {
       setVideoUploading(true);
 
       // Get Blob
-      let videoBlob: Blob;
+      let videoBlob: Blob | null = null;
       if (typeof videoUrl === "string") {
-        const response = await fetch(videoUrl);
-        videoBlob = await response.blob();
+        try {
+          const response = await fetch(videoUrl);
+          if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`);
+          videoBlob = await response.blob();
+        } catch (fetchErr) {
+          console.warn("⚠️ fetch(videoUrl) failed in uploadVideoToCloudinary, will try recordedChunksRef:", fetchErr);
+          if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+            videoBlob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+          }
+        }
       } else {
         videoBlob = videoUrl;
       }
+
+      if (!videoBlob) throw new Error("Unable to obtain video blob for upload");
 
       console.log("🔧 Video details:", {
         videoSize: videoBlob.size,
