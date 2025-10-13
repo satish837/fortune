@@ -3665,25 +3665,7 @@ export default function Create() {
                     </div>
                   )}
 
-                  {/* Memory Usage Indicator */}
-                  {memoryUsage !== null && (
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg text-blue-700">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">M</span>
-                        </div>
-                        <span className="font-medium">Memory Usage</span>
-                        <span className="text-sm">
-                          {memoryUsage.toFixed(1)} MB
-                          {memoryUsage > 100 && (
-                            <span className="ml-2 text-orange-600">
-                              ⚠️ High
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    </div>
-                  )}
+                 
                 </div>
               )}
 
@@ -3707,39 +3689,9 @@ export default function Create() {
                   <div className="text-xs text-gray-500 break-all mb-2">
                     <strong>Cloudinary URL:</strong> {cloudinaryVideoUrl}
                   </div>
-                  <Button
-                    onClick={copyVideoLink}
-                    className="h-8 px-4 bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                  >
-                    Copy Video URL
-                  </Button>
+                  
 
-                  {/* Mobile-optimized video preview */}
-                  {isMobile && recordedVideoUrl && (
-                    <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-700 font-medium mb-2">
-                        📱 Mobile Preview
-                      </p>
-                      <video
-                        controls
-                        playsInline
-                        muted
-                        className="w-full max-w-xs mx-auto rounded-lg"
-                        onError={(e) => {
-                          console.error("Video playback error:", e);
-                          setVideoGenerationError(
-                            "Video playback failed on mobile. Try downloading instead.",
-                          );
-                        }}
-                      >
-                        <source src={recordedVideoUrl} type="video/mp4" />
-                        Your browser does not support the video tag.
-                      </video>
-                      <p className="text-xs text-blue-600 mt-2">
-                        If video doesn't play, try downloading it instead.
-                      </p>
-                    </div>
-                  )}
+                 
                 </div>
               )}
 
@@ -3837,6 +3789,13 @@ export default function Create() {
                   }}
                 >
                   Generate again
+                </Button>
+
+                <Button
+                  onClick={copyVideoLink}
+                  className="h-11 px-6 bg-blue-500 hover:bg-blue-600 text-white text-sm"
+                >
+                  Copy Video URL
                 </Button>
               </div>
 
