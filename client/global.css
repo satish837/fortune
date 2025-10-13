@@ -1,0 +1,204 @@
+/** @import must precede all other statements */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap");
+
+/* Nordique Pro Font Family */
+@font-face {
+    font-family: 'Nordique Pro';
+    src: url('/fonts/leksen_design_-_nordiquepro-light-webfont.woff2') format('woff2'),
+         url('/fonts/leksen_design_-_nordiquepro-light-webfont.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Nordique Pro';
+    src: url('/fonts/leksen_design_-_nordiquepro-regular-webfont.woff2') format('woff2'),
+         url('/fonts/leksen_design_-_nordiquepro-regular-webfont.woff') format('woff');
+    font-weight: 400;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Nordique Pro';
+    src: url('/fonts/leksen_design_-_nordiquepro-semibold-webfont.woff2') format('woff2'),
+         url('/fonts/leksen_design_-_nordiquepro-semibold-webfont.woff') format('woff');
+    font-weight: 600;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@font-face {
+    font-family: 'Nordique Pro';
+    src: url('/fonts/nordique_pro_bold-webfont.woff2') format('woff2'),
+         url('/fonts/nordique_pro_bold-webfont.woff') format('woff');
+    font-weight: 700;
+    font-style: normal;
+    font-display: swap;
+    unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+2000-206F, U+2074, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  /**
+   * Tailwind CSS theme
+   * tailwind.config.ts expects the following color variables to be expressed as HSL values.
+   * A different format will require also updating the theme in tailwind.config.ts.
+  */
+  :root {
+    --background: 35 100% 98%;
+    --foreground: 24 71% 16%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 24 71% 16%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 24 71% 16%;
+
+    --primary: 24 94% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 35 100% 92%;
+    --secondary-foreground: 24 71% 16%;
+
+    --muted: 35 70% 94%;
+    --muted-foreground: 24 30% 36%;
+
+    --accent: 35 100% 93%;
+    --accent-foreground: 24 71% 16%;
+
+    --destructive: 6 86% 55%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 35 65% 88%;
+    --input: 35 65% 88%;
+    --ring: 24 94% 50%;
+
+    --radius: 0.75rem;
+
+    --sidebar-background: 35 100% 97%;
+
+    --sidebar-foreground: 24 71% 16%;
+
+    --sidebar-primary: 24 94% 50%;
+
+    --sidebar-primary-foreground: 0 0% 100%;
+
+    --sidebar-accent: 35 100% 93%;
+
+    --sidebar-accent-foreground: 24 71% 16%;
+
+    --sidebar-border: 35 65% 88%;
+
+    --sidebar-ring: 24 94% 50%;
+  }
+
+  .dark {
+    --background: 24 71% 8%;
+    --foreground: 35 100% 96%;
+
+    --card: 24 71% 10%;
+    --card-foreground: 35 100% 96%;
+
+    --popover: 24 71% 10%;
+    --popover-foreground: 35 100% 96%;
+
+    --primary: 24 94% 50%;
+    --primary-foreground: 0 0% 100%;
+
+    --secondary: 24 24% 18%;
+    --secondary-foreground: 35 100% 96%;
+
+    --muted: 24 24% 18%;
+    --muted-foreground: 35 50% 72%;
+
+    --accent: 24 24% 18%;
+    --accent-foreground: 35 100% 96%;
+
+    --destructive: 6 82% 45%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 24 24% 18%;
+    --input: 24 24% 18%;
+    --ring: 24 94% 50%;
+    --sidebar-background: 24 24% 12%;
+    --sidebar-foreground: 35 100% 96%;
+    --sidebar-primary: 24 94% 50%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 24 24% 18%;
+    --sidebar-accent-foreground: 35 100% 96%;
+    --sidebar-border: 24 24% 18%;
+    --sidebar-ring: 24 94% 50%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply text-foreground;
+    font-family: 'Nordique Pro', 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+    background-color: #fef3e2; /* Fallback color */
+    background-image: url('/main-bg.jpg');
+    background-size: cover;
+    background-position: right bottom;
+    background-repeat: no-repeat;
+    background-attachment: fixed;
+    min-height: 100vh;
+  }
+}
+
+@layer utilities {
+  @keyframes scroll {
+    0% {
+      transform: translateX(100%);
+    }
+    100% {
+      transform: translateX(-100%);
+    }
+  }
+
+  
+  
+  .animate-scroll {
+    animation: scroll 20s linear infinite;
+  }
+
+  /* Nordique Pro Font Utilities */
+  .font-nordique {
+    font-family: 'Nordique Pro', sans-serif;
+  }
+  
+  .font-nordique-inline {
+    font-family: 'Nordique Pro Inline', sans-serif;
+  }
+  
+  .font-nordique-light {
+    font-family: 'Nordique Pro', sans-serif;
+    font-weight: 300;
+  }
+  
+  .font-nordique-regular {
+    font-family: 'Nordique Pro', sans-serif;
+    font-weight: 400;
+  }
+  
+  .font-nordique-semibold {
+    font-family: 'Nordique Pro', sans-serif;
+    font-weight: 600;
+  }
+  
+  .font-nordique-bold {
+    font-family: 'Nordique Pro', sans-serif;
+    font-weight: 700;
+  }
+}
