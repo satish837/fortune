@@ -10,7 +10,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import { BarChart3, LogOut, Instagram, Facebook, MessageCircle } from "lucide-react";
+import {
+  BarChart3,
+  LogOut,
+  Instagram,
+  Facebook,
+  MessageCircle,
+} from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
@@ -532,11 +538,15 @@ export default function Create() {
   useEffect(() => {
     const loadCloudinaryConfig = async () => {
       try {
-        const origin = typeof window !== "undefined" ? window.location.origin : "";
+        const origin =
+          typeof window !== "undefined" ? window.location.origin : "";
         let response: Response | null = null;
 
         // Try absolute origin first (handles some proxy edge-cases), then fallback to relative
-        const tryUrls = [`${origin}/api/cloudinary-config`, `/api/cloudinary-config`];
+        const tryUrls = [
+          `${origin}/api/cloudinary-config`,
+          `/api/cloudinary-config`,
+        ];
         for (const url of tryUrls) {
           try {
             response = await fetch(url);
@@ -550,7 +560,9 @@ export default function Create() {
         }
 
         if (!response) {
-          throw new Error("All fetch attempts failed for /api/cloudinary-config");
+          throw new Error(
+            "All fetch attempts failed for /api/cloudinary-config",
+          );
         }
 
         if (!response.ok) {
@@ -2558,12 +2570,21 @@ export default function Create() {
       if (typeof videoUrl === "string") {
         try {
           const response = await fetch(videoUrl);
-          if (!response.ok) throw new Error(`Failed to fetch video: ${response.status}`);
+          if (!response.ok)
+            throw new Error(`Failed to fetch video: ${response.status}`);
           videoBlob = await response.blob();
         } catch (fetchErr) {
-          console.warn("⚠️ fetch(videoUrl) failed in uploadVideoToCloudinary, will try recordedChunksRef:", fetchErr);
-          if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
-            videoBlob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+          console.warn(
+            "⚠️ fetch(videoUrl) failed in uploadVideoToCloudinary, will try recordedChunksRef:",
+            fetchErr,
+          );
+          if (
+            recordedChunksRef.current &&
+            recordedChunksRef.current.length > 0
+          ) {
+            videoBlob = new Blob(recordedChunksRef.current, {
+              type: "video/mp4",
+            });
           }
         }
       } else {
@@ -2629,18 +2650,26 @@ export default function Create() {
           // Upload the video using our API endpoint
           console.log("🔄 Uploading video via API...");
 
-              // Try to fetch the video blob from the recorded URL. If that fails (some environments block fetch on blob: URLs),
+          // Try to fetch the video blob from the recorded URL. If that fails (some environments block fetch on blob: URLs),
           // fall back to using the in-memory recorded chunks.
           let blob: Blob | null = null;
           try {
             const response = await fetch(recordedVideoUrl);
             if (!response.ok) {
-              throw new Error(`Failed to fetch recorded video: ${response.status}`);
+              throw new Error(
+                `Failed to fetch recorded video: ${response.status}`,
+              );
             }
             blob = await response.blob();
           } catch (fetchErr) {
-            console.warn("⚠️ Could not fetch recordedVideoUrl, falling back to recordedChunksRef:", fetchErr);
-            if (recordedChunksRef.current && recordedChunksRef.current.length > 0) {
+            console.warn(
+              "⚠️ Could not fetch recordedVideoUrl, falling back to recordedChunksRef:",
+              fetchErr,
+            );
+            if (
+              recordedChunksRef.current &&
+              recordedChunksRef.current.length > 0
+            ) {
               blob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
             }
           }
@@ -2676,7 +2705,9 @@ export default function Create() {
 
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text().catch(() => "");
-            throw new Error(`Upload failed: ${uploadResponse.status} - ${errorText}`);
+            throw new Error(
+              `Upload failed: ${uploadResponse.status} - ${errorText}`,
+            );
           }
 
           const uploadData = await uploadResponse.json().catch((e) => {
@@ -2686,7 +2717,12 @@ export default function Create() {
           console.log("✅ Video uploaded successfully:", uploadData);
 
           videoUrl =
-            (uploadData && (uploadData.url || uploadData.secure_url || uploadData.secureUrl || uploadData.originalUrl)) || videoUrl;
+            (uploadData &&
+              (uploadData.url ||
+                uploadData.secure_url ||
+                uploadData.secureUrl ||
+                uploadData.originalUrl)) ||
+            videoUrl;
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
@@ -2710,11 +2746,20 @@ export default function Create() {
             const fetched = await fetch(videoUrl);
             if (fetched.ok) finalBlob = await fetched.blob();
           } catch (e) {
-            console.warn("⚠️ fetch(videoUrl) failed, will try recordedChunksRef if available:", e);
+            console.warn(
+              "⚠️ fetch(videoUrl) failed, will try recordedChunksRef if available:",
+              e,
+            );
           }
 
-          if (!finalBlob && recordedChunksRef.current && recordedChunksRef.current.length > 0) {
-            finalBlob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+          if (
+            !finalBlob &&
+            recordedChunksRef.current &&
+            recordedChunksRef.current.length > 0
+          ) {
+            finalBlob = new Blob(recordedChunksRef.current, {
+              type: "video/mp4",
+            });
           }
 
           if (!finalBlob) {
@@ -2813,7 +2858,8 @@ export default function Create() {
       }
 
       // Use the same social URL format as Copy Video Link
-      const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const socialUrl =
+        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + socialUrl)}`;
       window.open(whatsappUrl, "_blank");
     } else if (recordedVideoUrl) {
@@ -3207,9 +3253,6 @@ export default function Create() {
                     Choose File
                   </Button>
                 </div>
-                
-
-               
 
                 {/* Error message display */}
                 {uploadError && (
@@ -3704,12 +3747,8 @@ export default function Create() {
                       </button>
                     </div>
                   )}
-
-                 
                 </div>
               )}
-
-              
 
               {/* Upload Progress Indicator */}
               {downloading && (
@@ -3732,8 +3771,6 @@ export default function Create() {
                   </div>
                 </div>
               )}
-
-              
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                 <Button
@@ -3782,7 +3819,10 @@ export default function Create() {
 
               {/* Social Sharing Modal */}
               <Dialog open={shareOpen} onOpenChange={setShareOpen}>
-                <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+                <DialogContent
+                  className="max-w-2xl"
+                  onOpenAutoFocus={(e) => e.preventDefault()}
+                >
                   <DialogHeader>
                     <DialogTitle className="text-lg font-semibold text-orange-900">
                       🎉 Share Your Diwali Postcard Video!
@@ -3798,7 +3838,10 @@ export default function Create() {
                         className="w-full rounded-lg shadow"
                         style={{ maxHeight: "360px" }}
                       >
-                        <source src={cloudinaryVideoUrl || recordedVideoUrl || ""} type="video/mp4" />
+                        <source
+                          src={cloudinaryVideoUrl || recordedVideoUrl || ""}
+                          type="video/mp4"
+                        />
                         Your browser does not support the video tag.
                       </video>
                     </div>
@@ -3806,40 +3849,52 @@ export default function Create() {
 
                   <div className="flex justify-center gap-3 mb-4">
                     {/* Instagram */}
-                    <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
+                    <Button
+                      onClick={shareToInstagram}
+                      className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
+                    >
                       <div className="flex flex-col items-center">
                         <Instagram className="w-5 h-5" />
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
-                    
+
                     {/* WhatsApp */}
-                    <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 hover:bg-green-600 text-white">
+                    <Button
+                      onClick={shareToWhatsApp}
+                      className="h-12 bg-green-500 hover:bg-green-600 text-white"
+                    >
                       <div className="flex flex-col items-center">
                         <MessageCircle className="w-5 h-5" />
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
-                   
+
                     {/* Facebook */}
-                    <Button onClick={shareToFacebook} className="h-12 bg-blue-600 hover:bg-blue-700 text-white">
+                    <Button
+                      onClick={shareToFacebook}
+                      className="h-12 bg-blue-600 hover:bg-blue-700 text-white"
+                    >
                       <div className="flex flex-col items-center">
                         <Facebook className="w-5 h-5" />
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
-                   
                   </div>
 
                   <div className="text-center">
-                    <Button onClick={copyVideoLink} className="h-10 px-6 bg-gray-600 hover:bg-gray-700 text-white">
+                    <Button
+                      onClick={copyVideoLink}
+                      className="h-10 px-6 bg-gray-600 hover:bg-gray-700 text-white"
+                    >
                       📋 Copy Video Link
                     </Button>
                   </div>
 
                   <div className="mt-4 text-center">
                     <p className="text-sm text-orange-700">
-                      💡 <strong>Tip:</strong> For Instagram and TikTok, download the video first, then upload it to the app!
+                      💡 <strong>Tip:</strong> For Instagram and TikTok,
+                      download the video first, then upload it to the app!
                     </p>
                   </div>
                 </DialogContent>
