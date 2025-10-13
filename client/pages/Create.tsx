@@ -2087,25 +2087,49 @@ export default function Create() {
   const uploadVideoToCloudinary = async (videoUrl: string | Blob) => {
     try {
       setVideoUploading(true);
-      
-      // Handle both string URL and Blob
+
+      // Get Blob
       let videoBlob: Blob;
       if (typeof videoUrl === 'string') {
-        // If it's a string URL, fetch the blob
         const response = await fetch(videoUrl);
         videoBlob = await response.blob();
       } else {
-        // If it's already a Blob, use it directly
         videoBlob = videoUrl;
       }
-      
+
       console.log('🔧 Video details:', {
         videoSize: videoBlob.size,
         videoType: videoBlob.type,
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
       });
-      
-      // Convert blob to base64 and send as JSON to server-side upload endpoint
+
+      // Try direct unsigned Cloudinary upload first (client-side)
+      if (cloudinaryConfig?.cloudName && cloudinaryConfig?.uploadPreset) {
+        try {
+          const form = new FormData();
+          form.append('file', videoBlob, 'festive-postcard-video.mp4');
+          form.append('upload_preset', cloudinaryConfig.uploadPreset);
+
+          const cloudUrl = `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/video/upload`;
+          console.log('📤 Uploading directly to Cloudinary (unsigned)...');
+          const directRes = await fetch(cloudUrl, { method: 'POST', body: form });
+          console.log('📡 Direct upload response status:', directRes.status);
+          if (directRes.ok) {
+            const directJson = await directRes.json();
+            const url = directJson.secure_url || directJson.url;
+            setCloudinaryVideoUrl(url);
+            console.log('✅ Direct upload success:', url);
+            return url;
+          } else {
+            const txt = await directRes.text();
+            console.warn('Direct unsigned upload failed, falling back to server proxy:', txt);
+          }
+        } catch (err) {
+          console.warn('Direct Cloudinary upload failed, will fallback to server proxy:', err);
+        }
+      }
+
+      // Fallback: send base64 JSON payload to server-side upload endpoint
       const arrayBuffer = await videoBlob.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
       const videoData = `data:${videoBlob.type};base64,${base64}`;
@@ -2117,19 +2141,20 @@ export default function Create() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ videoData, fileName: `festive-postcard-${Date.now()}` }),
       });
-      
+
       console.log('📡 Upload response status:', uploadResponse.status);
-      
+
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
         console.error('❌ Upload failed:', errorText);
         throw new Error(`Cloudinary upload failed: ${uploadResponse.status} - ${errorText}`);
       }
-      
+
       const data = await uploadResponse.json();
-      console.log('✅ Video uploaded to Cloudinary:', data.secure_url);
-      setCloudinaryVideoUrl(data.secure_url);
-      return data.secure_url;
+      const url = data.secure_url || data.originalUrl || data.secureUrl;
+      console.log('✅ Video uploaded to Cloudinary (server):', url);
+      setCloudinaryVideoUrl(url);
+      return url;
     } catch (error) {
       console.error('❌ Error uploading video to Cloudinary:', error);
       setUploadError(error instanceof Error ? error.message : 'Upload failed');
