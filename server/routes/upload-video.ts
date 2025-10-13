@@ -84,7 +84,9 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
     }
 
     const versionSegment = uploadResult.version ? `/v${uploadResult.version}` : '';
-    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive,br_200k${versionSegment}/${uploadResult.public_id}.mp4`;
+    const transform = 'f_mp4,q_auto:best';
+    const baseName = (uploadResult.public_id || '').split('/').pop();
+    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${baseName}.mp4`;
 
     res.status(200).json({ success: true, secure_url: optimizedUrl, public_id: uploadResult.public_id, originalUrl: uploadResult.secure_url });
   } catch (error: any) {
