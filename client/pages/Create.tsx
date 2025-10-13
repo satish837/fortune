@@ -3844,43 +3844,7 @@ export default function Create() {
                 </Button>
                 <Button
                   className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
-                  onClick={async () => {
-                    const shareUrl = cloudinaryVideoUrl || result;
-                    const shareText = cloudinaryVideoUrl
-                      ? "Check out my festive Diwali postcard video!"
-                      : "My festive postcard";
-
-                    if (!shareUrl) {
-                      // Nothing to share
-                      try {
-                        navigator.clipboard.writeText(window.location.href);
-                      } catch (e) {}
-                      return;
-                    }
-
-                    if (
-                      navigator.share &&
-                      typeof navigator.share === "function"
-                    ) {
-                      try {
-                        await navigator.share({
-                          url: shareUrl,
-                          text: shareText,
-                          title: "Diwali Postcard",
-                        });
-                      } catch (err) {
-                        // Permission denied or user cancelled - fallback to opening link
-                        console.warn(
-                          "Navigator.share failed, falling back to open:",
-                          err,
-                        );
-                        window.open(shareUrl, "_blank");
-                      }
-                    } else {
-                      // Web Share API not available - open in new tab
-                      window.open(shareUrl, "_blank");
-                    }
-                  }}
+                  onClick={() => setIsShareModalOpen(true)}
                   disabled={videoUploading}
                 >
                   {videoUploading ? "Uploading..." : "Quick Share"}
