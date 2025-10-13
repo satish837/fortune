@@ -225,7 +225,7 @@ const BACKGROUNDS = [
     id: "4",
     name: "Diwali Sparkle",
     video: "/background/4.mp4",
-    fallback: "🌟",
+    fallback: "��",
   },
   { id: "5", name: "Festive Joy", video: "/background/5.mp4", fallback: "🎉" },
 ];
@@ -1109,8 +1109,8 @@ export default function Create() {
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
           // Calculate centered position
-          const offsetX = (whatsappSize - rect.width * scale) / 2;
-          const offsetY = (whatsappSize - rect.height * scale) / 2;
+          const offsetX = (targetWidth - rect.width * scale) / 2;
+          const offsetY = (targetHeight - rect.height * scale) / 2;
 
           // Draw the background video
           if (
