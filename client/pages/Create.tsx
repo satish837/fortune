@@ -2108,17 +2108,17 @@ export default function Create() {
       });
 
       // Always use server-side signed upload to avoid CORS/stream issues
-      // Convert to base64 and POST to /api/upload-video
+      // Send raw binary to server to avoid body-stream issues
       const arrayBuffer = await videoBlob.arrayBuffer();
-      const base64 = arrayBufferToBase64(arrayBuffer);
-      const videoData = `data:${videoBlob.type};base64,${base64}`;
-
-      console.log('📤 Uploading via server-side signed upload (JSON payload)...');
+      console.log('📤 Uploading raw binary to server-side signed upload...');
 
       const uploadResponse = await fetch('/api/upload-video', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoData, fileName: `festive-postcard-${Date.now()}` }),
+        headers: {
+          'Content-Type': 'application/octet-stream',
+          'x-filename': `festive-postcard-${Date.now()}.mp4`
+        },
+        body: arrayBuffer,
       });
 
       console.log('📡 Upload response status:', uploadResponse.status);
