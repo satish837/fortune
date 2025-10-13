@@ -858,10 +858,10 @@ export default function Create() {
           // Draw the greeting text
           if (greeting) {
             ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 24px Arial';
+            ctx.font = 'bold 32px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
-            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
           }
         };
         
@@ -1127,10 +1127,10 @@ export default function Create() {
             // Draw the greeting text
             if (greeting) {
               ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
             }
             
             // Record this frame
@@ -1427,7 +1427,7 @@ export default function Create() {
           console.log('📤 Uploading mobile video to Cloudinary...');
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('✅ Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
+          console.log('�� Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
         } catch (error) {
           console.error('❌ Failed to upload mobile video to Cloudinary:', error);
         }
@@ -1531,10 +1531,10 @@ export default function Create() {
             // Draw greeting text
             if (greeting) {
               ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
             }
             
             frameCount++;
@@ -1761,10 +1761,10 @@ export default function Create() {
             // Draw the greeting text
             if (greeting) {
               ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+            ctx.font = 'bold 32px Arial';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
             }
             
             // Record this frame using canvas-record API
@@ -2002,7 +2002,7 @@ export default function Create() {
             ctx.fillRect(0, rect.height - 50, rect.width, 50);
             
             ctx.fillStyle = 'white';
-            ctx.font = 'regular 16px Arial';
+            ctx.font = 'bold 28px Arial';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             
@@ -2037,7 +2037,7 @@ export default function Create() {
             
             // Draw each line
             lines.forEach((line, index) => {
-              ctx.fillText(line, rect.width / 2, rect.height - 25 + (index - lines.length / 2) * 18);
+              ctx.fillText(line, rect.width / 2, rect.height - 30 + (index - lines.length / 2) * 28);
             });
             
             ctx.restore();
@@ -2894,7 +2894,7 @@ export default function Create() {
                       {greeting && (
                         <div className="w-full absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center" style={{zIndex: 1002}}>
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-sm md:text-xl font-medium leading-tight">
+                            <p className="text-xl md:text-3xl font-semibold leading-tight">
                               {greeting}
                             </p>
                           </div>
