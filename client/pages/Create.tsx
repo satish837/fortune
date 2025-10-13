@@ -2278,7 +2278,7 @@ export default function Create() {
       }
       
       // Fallback to local video URL if Cloudinary upload is not ready
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
+      const message = "Check out my festive Diwali postcard video! ���✨";
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + ' ' + recordedVideoUrl)}`;
       window.open(whatsappUrl, '_blank');
     } else {
@@ -3016,13 +3016,10 @@ export default function Create() {
                     <strong>Cloudinary URL:</strong> {cloudinaryVideoUrl}
                   </div>
                   <Button
-                    onClick={() => {
-                      navigator.clipboard.writeText(cloudinaryVideoUrl);
-                      alert('Video URL copied to clipboard!');
-                    }}
+                    onClick={copyVideoLink}
                     className="h-8 px-4 bg-blue-500 hover:bg-blue-600 text-white text-sm"
                   >
-                    ��� Copy Video URL
+                    Copy Video URL
                   </Button>
                   
                   {/* Mobile-optimized video preview */}
