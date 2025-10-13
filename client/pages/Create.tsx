@@ -2,7 +2,13 @@ import { useMemo, useRef, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { BarChart3, LogOut } from "lucide-react";
 // Dynamic import for canvas-record (desktop only)
@@ -10,12 +16,34 @@ let Recorder: any = null;
 let RecorderStatus: any = null;
 let Encoders: any = null;
 
+// Safe ArrayBuffer -> Base64 conversion (chunked to avoid call stack issues)
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000; // 32KB per chunk
+  let binary = "";
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    // Convert chunk to string
+    const chunk = bytes.subarray(i, i + chunkSize);
+    // Use fromCharCode on an Array to avoid passing huge arg lists
+    binary += String.fromCharCode.apply(
+      null,
+      Array.from(chunk) as unknown as number[],
+    );
+  }
+  return btoa(binary);
+};
+
 // Circular Progress Bar Component
-const CircularProgressBar = ({ percentage, size = 80, strokeWidth = 6, color = '#f97316' }: { 
-  percentage: number; 
-  size?: number; 
-  strokeWidth?: number; 
-  color?: string; 
+const CircularProgressBar = ({
+  percentage,
+  size = 80,
+  strokeWidth = 6,
+  color = "#f97316",
+}: {
+  percentage: number;
+  size?: number;
+  strokeWidth?: number;
+  color?: string;
 }) => {
   const radius = (size - strokeWidth) / 2;
   const circumference = radius * 2 * Math.PI;
@@ -24,11 +52,7 @@ const CircularProgressBar = ({ percentage, size = 80, strokeWidth = 6, color = '
 
   return (
     <div className="relative inline-flex items-center justify-center">
-      <svg
-        width={size}
-        height={size}
-        className="transform -rotate-90"
-      >
+      <svg width={size} height={size} className="transform -rotate-90">
         {/* Background circle */}
         <circle
           cx={size / 2}
@@ -62,28 +86,107 @@ const CircularProgressBar = ({ percentage, size = 80, strokeWidth = 6, color = '
   );
 };
 
-interface DishItem { id: string; name: string; image: string }
+interface DishItem {
+  id: string;
+  name: string;
+  image: string;
+}
 
 const DISHES: DishItem[] = [
-  { id: "chakli", name: "Chakli", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/chakkli_ked8oq.png" },
-  { id: "churma-ladoos", name: "Churma Ladoos", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257669/Churmaladoos_k6q2v5.png" },
-  { id: "karanji", name: "Karanji", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/Karanji_qfrp0r.png" },
-  { id: "malpua", name: "Malpua", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/Malpua_kx1nns.png" },
-  { id: "mathri", name: "Mathri", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257671/Mathris_klyroa.png" },
-  { id: "moongdal-halwa", name: "Moongdal Halwa", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257672/Moongdal-Halwa_fbxkou.png" },
-  { id: "murukku", name: "Murukku", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257673/Murukku_hmudgd.png" },
-  { id: "mysore-pak", name: "Mysore Pak", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257751/MysorePak_lrocm4.png" },
-  { id: "payasam", name: "Payasam", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257675/Payasam_orwro2.png" },
-  { id: "pinni", name: "Pinni", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257677/Pinni_zdxrt3.png" },
-  { id: "samosa", name: "Samosa", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257679/Samosas_vfsnv4.png" },
-  { id: "shankarpali", name: "Shankarpali", image: "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257678/Shankarpali_rhwyva.png" },
+  {
+    id: "chakli",
+    name: "Chakli",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/chakkli_ked8oq.png",
+  },
+  {
+    id: "churma-ladoos",
+    name: "Churma Ladoos",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257669/Churmaladoos_k6q2v5.png",
+  },
+  {
+    id: "karanji",
+    name: "Karanji",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/Karanji_qfrp0r.png",
+  },
+  {
+    id: "malpua",
+    name: "Malpua",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257670/Malpua_kx1nns.png",
+  },
+  {
+    id: "mathri",
+    name: "Mathri",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257671/Mathris_klyroa.png",
+  },
+  {
+    id: "moongdal-halwa",
+    name: "Moongdal Halwa",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257672/Moongdal-Halwa_fbxkou.png",
+  },
+  {
+    id: "murukku",
+    name: "Murukku",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257673/Murukku_hmudgd.png",
+  },
+  {
+    id: "mysore-pak",
+    name: "Mysore Pak",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257751/MysorePak_lrocm4.png",
+  },
+  {
+    id: "payasam",
+    name: "Payasam",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257675/Payasam_orwro2.png",
+  },
+  {
+    id: "pinni",
+    name: "Pinni",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257677/Pinni_zdxrt3.png",
+  },
+  {
+    id: "samosa",
+    name: "Samosa",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257679/Samosas_vfsnv4.png",
+  },
+  {
+    id: "shankarpali",
+    name: "Shankarpali",
+    image:
+      "https://res.cloudinary.com/dsol5tcu0/image/upload/v1760257678/Shankarpali_rhwyva.png",
+  },
 ];
 
 const BACKGROUNDS = [
-  { id: "1", name: "Festive Celebration", video: "/background/1.mp4", fallback: "🎆" },
-  { id: "2", name: "Golden Lights", video: "/background/2.mp4", fallback: "✨" },
+  {
+    id: "1",
+    name: "Festive Celebration",
+    video: "/background/1.mp4",
+    fallback: "🎆",
+  },
+  {
+    id: "2",
+    name: "Golden Lights",
+    video: "/background/2.mp4",
+    fallback: "✨",
+  },
   { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "🕯️" },
-  { id: "4", name: "Diwali Sparkle", video: "/background/4.mp4", fallback: "🌟" },
+  {
+    id: "4",
+    name: "Diwali Sparkle",
+    video: "/background/4.mp4",
+    fallback: "🌟",
+  },
   { id: "5", name: "Festive Joy", video: "/background/5.mp4", fallback: "🎉" },
 ];
 
@@ -210,17 +313,32 @@ These Terms will be governed by and construed in accordance with the laws of Ind
 By clicking "Let's Begin" and uploading an image, participants confirm that they have read, understood, and agreed to these Terms and Conditions.`;
 
 function Stepper({ step }: { step: number }) {
-  const items = ["Upload Your Photo", "Choose Your Favourite Dish", "Choose your Festive Background", "Add Your Greeting", "Generate"]; 
+  const items = [
+    "Upload Your Photo",
+    "Choose Your Favourite Dish",
+    "Choose your Festive Background",
+    "Add Your Greeting",
+    "Generate",
+  ];
   return (
     <div className="w-full flex flex-wrap items-center justify-center gap-4 text-sm text-orange-900/80">
-      {items.map((label, i)=> (
+      {items.map((label, i) => (
         <div key={i} className="flex items-center gap-4">
-          <div className={cn("h-8 rounded-full px-3 inline-flex items-center justify-center border", i<=step?"bg-orange-500 text-white border-orange-500":"bg-white/70 border-orange-200")}>{i+1}</div>
+          <div
+            className={cn(
+              "h-8 rounded-full px-3 inline-flex items-center justify-center border",
+              i <= step
+                ? "bg-orange-500 text-white border-orange-500"
+                : "bg-white/70 border-orange-200",
+            )}
+          >
+            {i + 1}
+          </div>
           <span className="hidden sm:block">{label}</span>
         </div>
       ))}
     </div>
-  )
+  );
 }
 
 export default function Create() {
@@ -235,14 +353,18 @@ export default function Create() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [resultData, setResultData] = useState<any>(null);
-  const [videoLoading, setVideoLoading] = useState<{[key: string]: boolean}>({});
-  const [videoError, setVideoError] = useState<{[key: string]: boolean}>({});
+  const [videoLoading, setVideoLoading] = useState<{ [key: string]: boolean }>(
+    {},
+  );
+  const [videoError, setVideoError] = useState<{ [key: string]: boolean }>({});
   const [generationStep, setGenerationStep] = useState(0);
   const [isFading, setIsFading] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
-  const [cloudinaryVideoUrl, setCloudinaryVideoUrl] = useState<string | null>(null);
+  const [cloudinaryVideoUrl, setCloudinaryVideoUrl] = useState<string | null>(
+    null,
+  );
   const [videoUploading, setVideoUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [isOptimizing, setIsOptimizing] = useState(false);
@@ -253,10 +375,12 @@ export default function Create() {
   } | null>(null);
   const [showFooter, setShowFooter] = useState(false);
   const [canvasRecorder, setCanvasRecorder] = useState<any>(null);
-  const [recorderStatus, setRecorderStatus] = useState<string>('idle');
+  const [recorderStatus, setRecorderStatus] = useState<string>("idle");
   const [recordingProgress, setRecordingProgress] = useState(0);
   const [downloading, setDownloading] = useState(false);
-  const [videoGenerationError, setVideoGenerationError] = useState<string | null>(null);
+  const [videoGenerationError, setVideoGenerationError] = useState<
+    string | null
+  >(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isPageCrashed, setIsPageCrashed] = useState(false);
   const [memoryUsage, setMemoryUsage] = useState<number | null>(null);
@@ -268,90 +392,109 @@ export default function Create() {
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const videoRefs = useRef<{[key: string]: HTMLVideoElement | null}>({});
+  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
 
-  const selectedBackground = useMemo(()=> BACKGROUNDS.find(b=>b.id===bg) ?? BACKGROUNDS[0], [bg]);
+  const selectedBackground = useMemo(
+    () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
+    [bg],
+  );
 
   // Load canvas-record only on desktop devices
   const loadCanvasRecord = async () => {
     // Double-check mobile detection to prevent CommandLineOnNonRooted error
-    const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
+    const userAgent =
+      navigator.userAgent || navigator.vendor || (window as any).opera;
     const isChromeMobile = /Chrome/.test(userAgent) && /Mobile/.test(userAgent);
-    const isAndroidChrome = /Android/.test(userAgent) && /Chrome/.test(userAgent);
-    const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-    const isActuallyMobile = isMobileDevice || isChromeMobile || isAndroidChrome;
-    
+    const isAndroidChrome =
+      /Android/.test(userAgent) && /Chrome/.test(userAgent);
+    const isMobileDevice =
+      /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+        userAgent,
+      );
+    const isActuallyMobile =
+      isMobileDevice || isChromeMobile || isAndroidChrome;
+
     if (isActuallyMobile || canvasRecordLoaded) {
-      console.log('📱 Skipping canvas-record load on mobile device');
+      console.log("📱 Skipping canvas-record load on mobile device");
       return;
     }
-    
+
     try {
-      console.log('🖥️ Loading canvas-record for desktop...');
-      const canvasRecordModule = await import('canvas-record');
+      console.log("🖥️ Loading canvas-record for desktop...");
+      const canvasRecordModule = await import("canvas-record");
       Recorder = canvasRecordModule.Recorder;
       RecorderStatus = canvasRecordModule.RecorderStatus;
       Encoders = canvasRecordModule.Encoders;
       setCanvasRecordLoaded(true);
-      console.log('✅ Canvas-record loaded successfully');
+      console.log("✅ Canvas-record loaded successfully");
     } catch (error) {
-      console.error('❌ Failed to load canvas-record:', error);
-      setVideoGenerationError('Failed to load video recording library. Using fallback method.');
+      console.error("❌ Failed to load canvas-record:", error);
+      setVideoGenerationError(
+        "Failed to load video recording library. Using fallback method.",
+      );
     }
   };
 
   // Authentication check and mobile detection
   useEffect(() => {
     const checkAuth = () => {
-      const authToken = localStorage.getItem('authToken');
-      const userData = localStorage.getItem('userData');
-      
+      const authToken = localStorage.getItem("authToken");
+      const userData = localStorage.getItem("userData");
+
       if (!authToken || !userData) {
         // No authentication found, redirect to home page
-        navigate('/', { replace: true });
+        navigate("/", { replace: true });
         return;
       }
-      
+
       // Authentication found, allow access
       setAuthLoading(false);
     };
 
     // Detect mobile device with enhanced detection
     const detectMobile = () => {
-      const userAgent = navigator.userAgent || navigator.vendor || (window as any).opera;
-      
+      const userAgent =
+        navigator.userAgent || navigator.vendor || (window as any).opera;
+
       // Enhanced mobile detection
-      const isMobileDevice = /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
-      
+      const isMobileDevice =
+        /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(
+          userAgent,
+        );
+
       // Additional checks for mobile Chrome
-      const isChromeMobile = /Chrome/.test(userAgent) && /Mobile/.test(userAgent);
-      const isAndroidChrome = /Android/.test(userAgent) && /Chrome/.test(userAgent);
-      
+      const isChromeMobile =
+        /Chrome/.test(userAgent) && /Mobile/.test(userAgent);
+      const isAndroidChrome =
+        /Android/.test(userAgent) && /Chrome/.test(userAgent);
+
       // Force mobile mode for Chrome mobile to avoid CommandLineOnNonRooted error
       const forceMobile = isChromeMobile || isAndroidChrome;
-      
+
       const finalIsMobile = isMobileDevice || forceMobile;
-      
+
       setIsMobile(finalIsMobile);
-      console.log('📱 Mobile detection:', { 
-        isMobileDevice, 
-        isChromeMobile, 
-        isAndroidChrome, 
-        forceMobile, 
-        finalIsMobile, 
-        userAgent 
+      console.log("📱 Mobile detection:", {
+        isMobileDevice,
+        isChromeMobile,
+        isAndroidChrome,
+        forceMobile,
+        finalIsMobile,
+        userAgent,
       });
     };
 
     // Global error handler to prevent crashes
     const handleGlobalError = (event: ErrorEvent) => {
-      console.error('🚨 Global error caught:', event.error);
+      console.error("🚨 Global error caught:", event.error);
       setIsPageCrashed(true);
-      setVideoGenerationError('An unexpected error occurred. Please refresh the page and try again.');
-      
+      setVideoGenerationError(
+        "An unexpected error occurred. Please refresh the page and try again.",
+      );
+
       // Cleanup resources
       if ((window as any).animationCleanup) {
         (window as any).animationCleanup();
@@ -359,22 +502,27 @@ export default function Create() {
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error('🚨 Unhandled promise rejection:', event.reason);
+      console.error("🚨 Unhandled promise rejection:", event.reason);
       setIsPageCrashed(true);
-      setVideoGenerationError('An unexpected error occurred. Please refresh the page and try again.');
+      setVideoGenerationError(
+        "An unexpected error occurred. Please refresh the page and try again.",
+      );
     };
 
     // Add global error listeners
-    window.addEventListener('error', handleGlobalError);
-    window.addEventListener('unhandledrejection', handleUnhandledRejection);
+    window.addEventListener("error", handleGlobalError);
+    window.addEventListener("unhandledrejection", handleUnhandledRejection);
 
     checkAuth();
     detectMobile();
 
     // Cleanup error listeners
     return () => {
-      window.removeEventListener('error', handleGlobalError);
-      window.removeEventListener('unhandledrejection', handleUnhandledRejection);
+      window.removeEventListener("error", handleGlobalError);
+      window.removeEventListener(
+        "unhandledrejection",
+        handleUnhandledRejection,
+      );
     };
   }, [navigate]);
 
@@ -382,16 +530,16 @@ export default function Create() {
   useEffect(() => {
     const loadCloudinaryConfig = async () => {
       try {
-        const response = await fetch('/api/cloudinary-config');
+        const response = await fetch("/api/cloudinary-config");
         if (response.ok) {
           const config = await response.json();
           setCloudinaryConfig(config);
-          console.log('✅ Cloudinary config loaded:', config);
+          console.log("✅ Cloudinary config loaded:", config);
         } else {
-          console.error('❌ Failed to load Cloudinary config');
+          console.error("❌ Failed to load Cloudinary config");
         }
       } catch (error) {
-        console.error('❌ Error loading Cloudinary config:', error);
+        console.error("❌ Error loading Cloudinary config:", error);
       }
     };
 
@@ -402,10 +550,10 @@ export default function Create() {
   useEffect(() => {
     const initCanvasRecorder = async () => {
       try {
-        console.log('🔄 Canvas recorder ready to initialize');
+        console.log("🔄 Canvas recorder ready to initialize");
         // Canvas recorder will be initialized when needed
       } catch (error) {
-        console.error('❌ Canvas recorder initialization failed:', error);
+        console.error("❌ Canvas recorder initialization failed:", error);
       }
     };
 
@@ -414,9 +562,9 @@ export default function Create() {
 
   // Logout function
   const handleLogout = () => {
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userData');
-    navigate('/', { replace: true });
+    localStorage.removeItem("authToken");
+    localStorage.removeItem("userData");
+    navigate("/", { replace: true });
   };
 
   // Start videos when background selection step is active
@@ -424,13 +572,16 @@ export default function Create() {
     if (step === 2) {
       // Small delay to ensure videos are rendered
       setTimeout(() => {
-        BACKGROUNDS.forEach(background => {
+        BACKGROUNDS.forEach((background) => {
           const video = videoRefs.current[background.id];
           if (video) {
             console.log(`Attempting to play video: ${background.video}`);
             video.currentTime = 0;
             video.play().catch((error) => {
-              console.log(`Autoplay blocked for video: ${background.video}`, error);
+              console.log(
+                `Autoplay blocked for video: ${background.video}`,
+                error,
+              );
             });
           }
         });
@@ -447,10 +598,10 @@ export default function Create() {
       interval = setInterval(() => {
         // Start fade out
         setIsFading(true);
-        
+
         // After fade out completes, change step and fade in
         setTimeout(() => {
-          setGenerationStep(prev => (prev + 1) % GENERATION_STEPS.length);
+          setGenerationStep((prev) => (prev + 1) % GENERATION_STEPS.length);
           setIsFading(false);
         }, 800); // Fade out duration
       }, 10000); // Change step every 4 seconds
@@ -473,19 +624,20 @@ export default function Create() {
   // Show footer only when scrolled to bottom
   useEffect(() => {
     const handleScroll = () => {
-      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const scrollTop =
+        window.pageYOffset || document.documentElement.scrollTop;
       const windowHeight = window.innerHeight;
       const documentHeight = document.documentElement.scrollHeight;
-      
+
       // Show footer when scrolled to within 100px of bottom
       setShowFooter(scrollTop + windowHeight >= documentHeight - 100);
     };
 
-    window.addEventListener('scroll', handleScroll);
+    window.addEventListener("scroll", handleScroll);
     // Check initial state
     handleScroll();
-    
-    return () => window.removeEventListener('scroll', handleScroll);
+
+    return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
   // Cleanup effect to prevent memory leaks
@@ -496,147 +648,161 @@ export default function Create() {
         (window as any).animationCleanup();
         delete (window as any).animationCleanup;
       }
-      
+
       // Cleanup mobile animation loop
       if ((window as any).mobileAnimationCleanup) {
         (window as any).mobileAnimationCleanup();
         delete (window as any).mobileAnimationCleanup;
       }
-      
+
       // Cleanup canvas recorder
       if (canvasRecorder) {
         try {
           canvasRecorder.stop();
         } catch (error) {
-          console.warn('Error stopping canvas recorder on cleanup:', error);
+          console.warn("Error stopping canvas recorder on cleanup:", error);
         }
       }
-      
+
       // Cleanup video URLs
       if (recordedVideoUrl) {
         URL.revokeObjectURL(recordedVideoUrl);
       }
-      
+
       // Cleanup media recorder
       if (mediaRecorderRef.current) {
         try {
           mediaRecorderRef.current.stop();
         } catch (error) {
-          console.warn('Error stopping media recorder on cleanup:', error);
+          console.warn("Error stopping media recorder on cleanup:", error);
         }
       }
-      
-      console.log('🧹 Component cleanup completed');
+
+      console.log("🧹 Component cleanup completed");
     };
   }, [canvasRecorder, recordedVideoUrl]);
 
   // Memory monitoring to prevent crashes
   useEffect(() => {
     const checkMemoryUsage = () => {
-      if ('memory' in performance) {
+      if ("memory" in performance) {
         const memory = (performance as any).memory;
         const usedMB = memory.usedJSHeapSize / (1024 * 1024);
         setMemoryUsage(usedMB);
-        
+
         // Warn if memory usage is high
-        if (usedMB > 100) { // 100MB threshold
-          console.warn('⚠️ High memory usage detected:', usedMB.toFixed(2), 'MB');
-          setVideoGenerationError('High memory usage detected. Consider refreshing the page.');
+        if (usedMB > 100) {
+          // 100MB threshold
+          console.warn(
+            "⚠️ High memory usage detected:",
+            usedMB.toFixed(2),
+            "MB",
+          );
+          setVideoGenerationError(
+            "High memory usage detected. Consider refreshing the page.",
+          );
         }
-        
+
         // Force cleanup if memory usage is very high
-        if (usedMB > 200) { // 200MB threshold
-          console.error('🚨 Critical memory usage:', usedMB.toFixed(2), 'MB');
+        if (usedMB > 200) {
+          // 200MB threshold
+          console.error("🚨 Critical memory usage:", usedMB.toFixed(2), "MB");
           setIsPageCrashed(true);
-          setVideoGenerationError('Memory usage too high. Please refresh the page.');
+          setVideoGenerationError(
+            "Memory usage too high. Please refresh the page.",
+          );
         }
       }
     };
 
     // Check memory every 5 seconds
     const memoryInterval = setInterval(checkMemoryUsage, 5000);
-    
+
     // Initial check
     checkMemoryUsage();
 
     return () => clearInterval(memoryInterval);
   }, []);
 
-  const toBase64 = (file: File) => new Promise<string>((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => resolve(reader.result as string);
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
+  const toBase64 = (file: File) =>
+    new Promise<string>((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
 
   // Optimize image using TinyPNG API
   const optimizeImageWithTinyPNG = async (file: File): Promise<File> => {
     try {
       setIsOptimizing(true);
-      console.log('🔄 Optimizing image with TinyPNG...');
-      console.log('📊 Original file size:', (file.size / (1024 * 1024)).toFixed(2), 'MB');
-      
+      console.log("🔄 Optimizing image with TinyPNG...");
+      console.log(
+        "📊 Original file size:",
+        (file.size / (1024 * 1024)).toFixed(2),
+        "MB",
+      );
+
       // Create FormData for TinyPNG API
       const formData = new FormData();
-      formData.append('file', file);
-      
-      // Get TinyPNG API key from server
-      const configResponse = await fetch('/api/tinypng-config');
-      if (!configResponse.ok) {
-        throw new Error('Failed to get TinyPNG configuration');
-      }
-      const config = await configResponse.json();
-      
-      if (!config.apiKey) {
-        throw new Error('TinyPNG API key not configured');
-      }
-      
-      // Call TinyPNG API
-      const response = await fetch('https://api.tinify.com/shrink', {
-        method: 'POST',
+      formData.append("file", file);
+
+      // Send file to server-side TinyPNG proxy
+      const dataUrl = await toBase64(file);
+      const proxyRes = await fetch("/api/optimize-image", {
+        method: "POST",
         headers: {
-          'Authorization': 'Basic ' + btoa(`api:${config.apiKey}`),
+          "Content-Type": "application/json",
         },
-        body: formData
+        body: JSON.stringify({ dataUrl }),
       });
-      
-      if (!response.ok) {
-        throw new Error(`TinyPNG API error: ${response.status} ${response.statusText}`);
+
+      if (!proxyRes.ok) {
+        const details = await proxyRes.text();
+        throw new Error(
+          `TinyPNG proxy failed: ${proxyRes.status} - ${details}`,
+        );
       }
-      
-      const result = await response.json();
-      console.log('✅ TinyPNG optimization result:', result);
-      
-      // Download the optimized image
-      const optimizedResponse = await fetch(result.output.url);
-      if (!optimizedResponse.ok) {
-        throw new Error('Failed to download optimized image');
-      }
-      
-      const optimizedBlob = await optimizedResponse.blob();
+
+      const proxyJson = await proxyRes.json();
+      const optimizedDataUrl = proxyJson.dataUrl as string;
+      if (!optimizedDataUrl) throw new Error("TinyPNG proxy returned no data");
+
+      // Create blob from returned data URL
+      const base64 = optimizedDataUrl.split(",")[1];
+      const mime = optimizedDataUrl.split(",")[0].split(":")[1].split(";")[0];
+      const optimizedBlob = await (async () => {
+        const b = atob(base64);
+        const u8 = new Uint8Array(b.length);
+        for (let i = 0; i < b.length; i++) u8[i] = b.charCodeAt(i);
+        return new Blob([u8], { type: mime });
+      })();
       const optimizedFile = new File([optimizedBlob], file.name, {
         type: file.type,
-        lastModified: Date.now()
+        lastModified: Date.now(),
       });
-      
-      const compressionRatio = ((1 - optimizedFile.size / file.size) * 100);
-      
-      console.log('📊 Optimized file size:', (optimizedFile.size / (1024 * 1024)).toFixed(2), 'MB');
-      console.log('📈 Compression ratio:', compressionRatio.toFixed(1), '%');
-      
+
+      const compressionRatio = (1 - optimizedFile.size / file.size) * 100;
+
+      console.log(
+        "📊 Optimized file size:",
+        (optimizedFile.size / (1024 * 1024)).toFixed(2),
+        "MB",
+      );
+      console.log("📈 Compression ratio:", compressionRatio.toFixed(1), "%");
+
       // Set optimization result for UI display
       setOptimizationResult({
         originalSize: file.size,
         optimizedSize: optimizedFile.size,
-        compressionRatio: compressionRatio
+        compressionRatio: compressionRatio,
       });
-      
+
       setIsOptimizing(false);
       return optimizedFile;
-      
     } catch (error) {
-      console.error('❌ TinyPNG optimization failed:', error);
-      console.log('⚠️ Using original file without optimization');
+      console.error("❌ TinyPNG optimization failed:", error);
+      console.log("⚠️ Using original file without optimization");
       setIsOptimizing(false);
       setOptimizationResult(null);
       return file; // Return original file if optimization fails
@@ -645,61 +811,69 @@ export default function Create() {
 
   const handleFile = async (f?: File) => {
     if (!f) return;
-    
+
     // Clear any previous error
     setUploadError(null);
-    
+
     // Check file size (10MB limit - increased for optimization)
     const maxSize = 10 * 1024 * 1024; // 10MB in bytes
     if (f.size > maxSize) {
-      setUploadError(`File size too large. Please upload an image smaller than 10MB. Current size: ${(f.size / (1024 * 1024)).toFixed(2)}MB`);
+      setUploadError(
+        `File size too large. Please upload an image smaller than 10MB. Current size: ${(f.size / (1024 * 1024)).toFixed(2)}MB`,
+      );
       return;
     }
-    
+
     // Check file type
-    if (!f.type.startsWith('image/')) {
-      setUploadError('Please upload a valid image file (PNG, JPG, JPEG, etc.)');
+    if (!f.type.startsWith("image/")) {
+      setUploadError("Please upload a valid image file (PNG, JPG, JPEG, etc.)");
       return;
     }
-    
+
     try {
       // Clear previous optimization result
       setOptimizationResult(null);
-      
+
       // Optimize image with TinyPNG
       const optimizedFile = await optimizeImageWithTinyPNG(f);
-      
+
       // Convert optimized file to base64
       const data = await toBase64(optimizedFile);
       setPhotoData(data);
       setUploadError(null); // Clear any previous error on successful upload
-      
-      console.log('✅ Image uploaded and optimized successfully');
-      
+
+      console.log("✅ Image uploaded and optimized successfully");
     } catch (error) {
-      console.error('❌ Image processing failed:', error);
-      setUploadError('Failed to process the image. Please try again.');
+      console.error("❌ Image processing failed:", error);
+      setUploadError("Failed to process the image. Please try again.");
     }
   };
 
   // Check browser video format support
   const checkVideoFormatSupport = () => {
     const formats = [
-      { type: 'video/mp4;codecs=h264', name: 'MP4 (H.264)' },
-      { type: 'video/mp4', name: 'MP4' },
-      { type: 'video/webm;codecs=vp9', name: 'WebM (VP9)' },
-      { type: 'video/webm;codecs=vp8', name: 'WebM (VP8)' }
+      { type: "video/mp4;codecs=h264", name: "MP4 (H.264)" },
+      { type: "video/mp4", name: "MP4" },
+      { type: "video/webm;codecs=vp9", name: "WebM (VP9)" },
+      { type: "video/webm;codecs=vp8", name: "WebM (VP8)" },
     ];
-    
-    const supported = formats.filter(format => MediaRecorder.isTypeSupported(format.type));
-    console.log('Supported video formats:', supported.map(f => f.name));
-    
+
+    const supported = formats.filter((format) =>
+      MediaRecorder.isTypeSupported(format.type),
+    );
+    console.log(
+      "Supported video formats:",
+      supported.map((f) => f.name),
+    );
+
     // Check if MP4 is supported
-    const mp4Supported = supported.some(f => f.type.includes('mp4'));
+    const mp4Supported = supported.some((f) => f.type.includes("mp4"));
     if (!mp4Supported) {
-      console.warn('MP4 not supported - videos may not be compatible with all social media platforms');
+      console.warn(
+        "MP4 not supported - videos may not be compatible with all social media platforms",
+      );
     }
-    
+
     return { supported, mp4Supported };
   };
 
@@ -708,168 +882,200 @@ export default function Create() {
     const maxSize = 16 * 1024 * 1024; // 16MB limit for WhatsApp
     const maxDuration = 60; // 60 seconds limit for WhatsApp
     const minSize = 1000; // Minimum 1KB
-    
-    console.log('📱 Validating WhatsApp compatibility:', {
+
+    console.log("📱 Validating WhatsApp compatibility:", {
       size: videoBlob.size,
       sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
       maxSize: maxSize / (1024 * 1024),
-      type: videoBlob.type
+      type: videoBlob.type,
     });
-    
+
     // WhatsApp file size limit
     if (videoBlob.size > maxSize) {
-      console.warn('❌ Video too large for WhatsApp:', videoBlob.size);
+      console.warn("❌ Video too large for WhatsApp:", videoBlob.size);
       return false;
     }
-    
+
     // WhatsApp format requirement
-    if (!videoBlob.type.includes('mp4')) {
-      console.warn('❌ Video format not supported by WhatsApp:', videoBlob.type);
+    if (!videoBlob.type.includes("mp4")) {
+      console.warn(
+        "❌ Video format not supported by WhatsApp:",
+        videoBlob.type,
+      );
       return false;
     }
-    
+
     // Check if video is too small (might be corrupted)
     if (videoBlob.size < minSize) {
-      console.warn('❌ Video too small, might be corrupted:', videoBlob.size);
+      console.warn("❌ Video too small, might be corrupted:", videoBlob.size);
       return false;
     }
-    
+
     // WhatsApp prefers smaller files for better sharing
-    if (videoBlob.size > 8 * 1024 * 1024) { // 8MB warning
-      console.warn('⚠️ Video is large for WhatsApp sharing:', (videoBlob.size / (1024 * 1024)).toFixed(2), 'MB');
+    if (videoBlob.size > 8 * 1024 * 1024) {
+      // 8MB warning
+      console.warn(
+        "⚠️ Video is large for WhatsApp sharing:",
+        (videoBlob.size / (1024 * 1024)).toFixed(2),
+        "MB",
+      );
     }
-    
-    console.log('✅ Video is WhatsApp compatible');
+
+    console.log("✅ Video is WhatsApp compatible");
     return true;
   };
 
   // Fallback video generation using MediaRecorder
   const generateFallbackVideo = async (): Promise<string | null> => {
     try {
-      console.log('🔄 Generating fallback video using MediaRecorder...');
-      
+      console.log("🔄 Generating fallback video using MediaRecorder...");
+
       const canvas = canvasRef.current;
       if (!canvas) {
-        throw new Error('Canvas not found');
+        throw new Error("Canvas not found");
       }
-      
+
       // Get the generated card container
-      const cardContainer = document.querySelector('.generated-card-container') as HTMLElement;
+      const cardContainer = document.querySelector(
+        ".generated-card-container",
+      ) as HTMLElement;
       if (!cardContainer) {
-        throw new Error('Generated card container not found');
+        throw new Error("Generated card container not found");
       }
-      
+
       // Get the background video element
-      const backgroundVideo = cardContainer.querySelector('video[src*="background"]') as HTMLVideoElement;
+      const backgroundVideo = cardContainer.querySelector(
+        'video[src*="background"]',
+      ) as HTMLVideoElement;
       if (!backgroundVideo) {
-        throw new Error('Background video not found');
+        throw new Error("Background video not found");
       }
-      
+
       // Ensure video is playing
       if (backgroundVideo.paused) {
         backgroundVideo.play().catch(console.error);
       }
-      
-      const ctx = canvas.getContext('2d');
+
+      const ctx = canvas.getContext("2d");
       if (!ctx) {
-        throw new Error('Canvas context not found');
+        throw new Error("Canvas context not found");
       }
-      
+
       // Get the container's dimensions
       const rect = cardContainer.getBoundingClientRect();
       const whatsappSize = 512;
       const maxSize = Math.min(rect.width, rect.height);
       const scale = whatsappSize / maxSize;
-      
+
       canvas.width = whatsappSize;
       canvas.height = whatsappSize;
       ctx.scale(scale, scale);
-      
+
       // Create MediaRecorder with WhatsApp-compatible settings
       const stream = canvas.captureStream(15); // 15 FPS for WhatsApp compatibility
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
         videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-        audioBitsPerSecond: 32000   // 32kbps audio for WhatsApp
+        audioBitsPerSecond: 32000, // 32kbps audio for WhatsApp
       });
-      
+
       const chunks: Blob[] = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data);
         }
       };
-      
+
       return new Promise((resolve) => {
         mediaRecorder.onstop = () => {
-          const videoBlob = new Blob(chunks, { type: 'video/mp4' });
+          const videoBlob = new Blob(chunks, { type: "video/mp4" });
           const videoUrl = URL.createObjectURL(videoBlob);
-          
-          console.log('✅ Fallback video generated:', {
+
+          console.log("✅ Fallback video generated:", {
             size: videoBlob.size,
             type: videoBlob.type,
-            sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
+            sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
           });
-          
+
           resolve(videoUrl);
         };
-        
+
         // Start recording
         mediaRecorder.start();
-        
+
         // Record for 3 seconds
         setTimeout(() => {
           mediaRecorder.stop();
         }, 3000);
-        
+
         // Draw content during recording
         const drawFrame = () => {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
-          
+
           // Calculate centered position
           const offsetX = (whatsappSize - rect.width * scale) / 2;
           const offsetY = (whatsappSize - rect.height * scale) / 2;
-          
+
           // Draw the background video
-          if (backgroundVideo.videoWidth > 0 && backgroundVideo.videoHeight > 0) {
-            ctx.drawImage(backgroundVideo, offsetX, offsetY, rect.width * scale, rect.height * scale);
+          if (
+            backgroundVideo.videoWidth > 0 &&
+            backgroundVideo.videoHeight > 0
+          ) {
+            ctx.drawImage(
+              backgroundVideo,
+              offsetX,
+              offsetY,
+              rect.width * scale,
+              rect.height * scale,
+            );
           }
-          
+
           // Draw the generated image
           const generatedImg = new Image();
-          generatedImg.crossOrigin = 'anonymous';
+          generatedImg.crossOrigin = "anonymous";
           generatedImg.src = result;
-          ctx.drawImage(generatedImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-          
+          ctx.drawImage(
+            generatedImg,
+            offsetX,
+            offsetY,
+            rect.width * scale,
+            rect.height * scale,
+          );
+
           // Draw the photo frame
           const photoFrameImg = new Image();
-          photoFrameImg.crossOrigin = 'anonymous';
+          photoFrameImg.crossOrigin = "anonymous";
           photoFrameImg.src = "/photo-frame-story.png";
-          ctx.drawImage(photoFrameImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-          
+          ctx.drawImage(
+            photoFrameImg,
+            offsetX,
+            offsetY,
+            rect.width * scale,
+            rect.height * scale,
+          );
+
           // Draw the greeting text
           if (greeting) {
-            ctx.fillStyle = '#ffffff';
-            ctx.font = 'bold 24px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+            ctx.fillStyle = "#ffffff";
+            ctx.font = "bold 32px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
           }
         };
-        
+
         // Draw frames with mobile-optimized FPS
         const interval = setInterval(drawFrame, 1000 / (isMobile ? 12 : 15)); // Mobile-optimized FPS
-        
+
         // Stop drawing after 3 seconds
         setTimeout(() => {
           clearInterval(interval);
         }, 3000);
       });
-      
     } catch (error) {
-      console.error('❌ Fallback video generation failed:', error);
+      console.error("❌ Fallback video generation failed:", error);
       return null;
     }
   };
@@ -877,98 +1083,99 @@ export default function Create() {
   // Optimize video for WhatsApp compatibility
   const optimizeVideoForWhatsApp = async (videoBlob: Blob): Promise<string> => {
     return new Promise((resolve) => {
-      const video = document.createElement('video');
+      const video = document.createElement("video");
       video.src = URL.createObjectURL(videoBlob);
       video.muted = true;
       video.playsInline = true;
-      
+
       video.onloadedmetadata = () => {
         // Create a canvas for re-encoding
-        const canvas = document.createElement('canvas');
-        const ctx = canvas.getContext('2d');
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
         if (!ctx) {
           resolve(URL.createObjectURL(videoBlob));
           return;
         }
-        
+
         // Set WhatsApp-compatible dimensions
         canvas.width = 512;
         canvas.height = 512;
-        
+
         // Create MediaRecorder with strict WhatsApp settings
         const stream = canvas.captureStream(15); // 15 FPS for WhatsApp
         const mediaRecorder = new MediaRecorder(stream, {
           mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
           videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-          audioBitsPerSecond: 32000   // 32kbps audio
+          audioBitsPerSecond: 32000, // 32kbps audio
         });
-        
+
         const chunks: Blob[] = [];
-        
+
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
             chunks.push(event.data);
           }
         };
-        
+
         mediaRecorder.onstop = () => {
-          const optimizedBlob = new Blob(chunks, { type: 'video/mp4' });
+          const optimizedBlob = new Blob(chunks, { type: "video/mp4" });
           const optimizedUrl = URL.createObjectURL(optimizedBlob);
-          
-          console.log('📱 WhatsApp-optimized video:', {
+
+          console.log("📱 WhatsApp-optimized video:", {
             originalSize: videoBlob.size,
             optimizedSize: optimizedBlob.size,
             sizeInMB: (optimizedBlob.size / (1024 * 1024)).toFixed(2),
             duration: video.duration,
             width: video.videoWidth,
-            height: video.videoHeight
+            height: video.videoHeight,
           });
-          
+
           // Validate WhatsApp compatibility
-          if (optimizedBlob.size > 16 * 1024 * 1024) { // 16MB limit
-            console.warn('⚠️ Video too large for WhatsApp, using original');
+          if (optimizedBlob.size > 16 * 1024 * 1024) {
+            // 16MB limit
+            console.warn("⚠️ Video too large for WhatsApp, using original");
             resolve(URL.createObjectURL(videoBlob));
           } else {
             resolve(optimizedUrl);
           }
         };
-        
+
         // Start recording
         mediaRecorder.start();
-        
+
         // Draw video frames to canvas and record at 15 FPS
         let frameCount = 0;
         const targetFPS = 15;
         const frameInterval = 1000 / targetFPS;
         let lastFrameTime = 0;
-        
+
         const drawFrame = (currentTime: number) => {
           if (currentTime - lastFrameTime >= frameInterval) {
             // Draw video frame to canvas
             ctx.drawImage(video, 0, 0, 512, 512);
-            
+
             frameCount++;
             lastFrameTime = currentTime;
           }
-          
+
           // Check if video has ended
           if (video.ended || video.paused) {
             mediaRecorder.stop();
             return;
           }
-          
+
           requestAnimationFrame(drawFrame);
         };
-        
+
         // Start drawing frames
         video.currentTime = 0;
         video.play();
         requestAnimationFrame(drawFrame);
       };
-      
+
       video.onerror = () => {
         // Fallback to original video if optimization fails
-        console.warn('Video optimization failed, using original');
+        console.warn("Video optimization failed, using original");
         resolve(URL.createObjectURL(videoBlob));
       };
     });
@@ -980,61 +1187,65 @@ export default function Create() {
       try {
         const canvas = canvasRef.current;
         if (!canvas) {
-          reject(new Error('Canvas not found'));
+          reject(new Error("Canvas not found"));
           return;
         }
-        
+
         // Get the generated card container
-        const cardContainer = document.querySelector('.generated-card-container') as HTMLElement;
+        const cardContainer = document.querySelector(
+          ".generated-card-container",
+        ) as HTMLElement;
         if (!cardContainer) {
-          reject(new Error('Generated card container not found'));
+          reject(new Error("Generated card container not found"));
           return;
         }
-        
+
         // Get the background video element
-        const backgroundVideo = cardContainer.querySelector('video[src*="background"]') as HTMLVideoElement;
+        const backgroundVideo = cardContainer.querySelector(
+          'video[src*="background"]',
+        ) as HTMLVideoElement;
         if (!backgroundVideo) {
-          reject(new Error('Background video not found'));
+          reject(new Error("Background video not found"));
           return;
         }
-        
+
         // Ensure video is playing
         if (backgroundVideo.paused) {
           backgroundVideo.play().catch(console.error);
         }
-        
-        const ctx = canvas.getContext('2d');
+
+        const ctx = canvas.getContext("2d");
         if (!ctx) {
-          reject(new Error('Canvas context not found'));
+          reject(new Error("Canvas context not found"));
           return;
         }
-        
+
         // Get the container's dimensions and optimize for WhatsApp
         const rect = cardContainer.getBoundingClientRect();
-        
+
         // WhatsApp prefers square videos
         const whatsappSize = 512; // WhatsApp-friendly size
         const maxSize = Math.min(rect.width, rect.height);
         const scale = whatsappSize / maxSize;
-        
+
         canvas.width = whatsappSize;
         canvas.height = whatsappSize;
         ctx.scale(scale, scale);
-        
+
         // Initialize Canvas Recorder with strict WhatsApp-compatible settings
         const recorder = new Recorder(ctx, {
-          extension: 'mp4',
-          target: 'in-browser',
+          extension: "mp4",
+          target: "in-browser",
           encoderOptions: {
             encoderOptions: {
               // Strict WhatsApp compatibility settings
-              profile: 'baseline',
-              level: '3.0',
+              profile: "baseline",
+              level: "3.0",
               bitrate: 500000, // 500kbps (WhatsApp prefers smaller files)
               framerate: 24, // 24fps (WhatsApp standard)
               keyframeInterval: 24,
-              pixelFormat: 'yuv420p',
-              preset: 'ultrafast',
+              pixelFormat: "yuv420p",
+              preset: "ultrafast",
               crf: 28, // Higher compression for smaller file size
               // Additional WhatsApp-specific settings
               maxrate: 500000,
@@ -1042,46 +1253,48 @@ export default function Create() {
               g: 24, // GOP size
               sc_threshold: 0,
               // Ensure proper metadata for WhatsApp
-              movflags: '+faststart',
+              movflags: "+faststart",
               // Audio settings (even though we don't have audio)
-              audioCodec: 'aac',
+              audioCodec: "aac",
               audioBitrate: 64000,
               audioChannels: 1,
-              audioSampleRate: 22050
-            }
+              audioSampleRate: 22050,
+            },
           },
           onStatusChange: (status) => {
-            console.log('Recorder status:', status);
+            console.log("Recorder status:", status);
             setRecorderStatus(String(status));
-          }
+          },
         });
-        
+
         setCanvasRecorder(recorder);
-        
+
         // Start recording
         await recorder.start({
-          filename: `diwali-postcard-${Date.now()}.mp4`
+          filename: `diwali-postcard-${Date.now()}.mp4`,
         });
-        
-        console.log('📸 Starting 10-second video recording...');
-        
+
+        console.log("📸 Starting 10-second video recording...");
+
         // Record for 10 seconds at 24 FPS (WhatsApp standard)
         const duration = 10000; // 10 seconds in milliseconds
         const fps = 24; // WhatsApp standard frame rate
         const frameInterval = 1000 / fps; // ~41.67ms per frame
         const totalFrames = Math.floor(duration / frameInterval); // 240 frames
-        
-        console.log(`📹 Recording ${totalFrames} frames at ${fps} FPS for ${duration/1000} seconds`);
-        
+
+        console.log(
+          `📹 Recording ${totalFrames} frames at ${fps} FPS for ${duration / 1000} seconds`,
+        );
+
         // Pre-load images to avoid async issues
         const generatedImg = new Image();
-        generatedImg.crossOrigin = 'anonymous';
+        generatedImg.crossOrigin = "anonymous";
         generatedImg.src = result;
-        
+
         const photoFrameImg = new Image();
-        photoFrameImg.crossOrigin = 'anonymous';
+        photoFrameImg.crossOrigin = "anonymous";
         photoFrameImg.src = "/photo-frame-story.png";
-        
+
         // Wait for images to load
         await new Promise((resolve) => {
           let loadedCount = 0;
@@ -1092,109 +1305,136 @@ export default function Create() {
           generatedImg.onload = onLoad;
           photoFrameImg.onload = onLoad;
         });
-        
+
         // Animation loop with precise timing
         let frameCount = 0;
         let lastFrameTime = 0;
-        
+
         const animate = async (currentTime: number) => {
           // Check if we should record this frame
           if (currentTime - lastFrameTime >= frameInterval) {
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
+
             // Calculate centered position for square canvas
             const offsetX = (whatsappSize - rect.width * scale) / 2;
             const offsetY = (whatsappSize - rect.height * scale) / 2;
-            
+
             // Draw the background video
-            if (backgroundVideo.videoWidth > 0 && backgroundVideo.videoHeight > 0) {
-              ctx.drawImage(backgroundVideo, offsetX, offsetY, rect.width * scale, rect.height * scale);
+            if (
+              backgroundVideo.videoWidth > 0 &&
+              backgroundVideo.videoHeight > 0
+            ) {
+              ctx.drawImage(
+                backgroundVideo,
+                offsetX,
+                offsetY,
+                rect.width * scale,
+                rect.height * scale,
+              );
             }
-            
+
             // Draw the generated image
-            ctx.drawImage(generatedImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
+            ctx.drawImage(
+              generatedImg,
+              offsetX,
+              offsetY,
+              rect.width * scale,
+              rect.height * scale,
+            );
+
             // Draw the photo frame
-            ctx.drawImage(photoFrameImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
+            ctx.drawImage(
+              photoFrameImg,
+              offsetX,
+              offsetY,
+              rect.width * scale,
+              rect.height * scale,
+            );
+
             // Draw the greeting text
             if (greeting) {
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
+              ctx.fillStyle = "#ffffff";
+              ctx.font = "bold 32px Arial";
+              ctx.textAlign = "center";
+              ctx.textBaseline = "middle";
+              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
             }
-            
+
             // Record this frame
             recorder.step();
-            
+
             frameCount++;
             lastFrameTime = currentTime;
-            
+
             const progress = Math.round((frameCount / totalFrames) * 100);
-            console.log(`📸 Frame ${frameCount}/${totalFrames} recorded (${progress}%)`);
-            
+            console.log(
+              `📸 Frame ${frameCount}/${totalFrames} recorded (${progress}%)`,
+            );
+
             // Update UI with progress
             setRecorderStatus(`recording-${progress}`);
           }
-          
+
           // Check if we've recorded enough frames
           if (frameCount >= totalFrames) {
-            console.log('🎬 Recording complete, stopping...');
+            console.log("🎬 Recording complete, stopping...");
             // Stop recording
             const videoData = await recorder.stop();
-            const videoBlob = new Blob([videoData as BlobPart], { type: 'video/mp4' });
-            
-            console.log('✅ Video recording completed:', {
+            const videoBlob = new Blob([videoData as BlobPart], {
+              type: "video/mp4",
+            });
+
+            console.log("✅ Video recording completed:", {
               size: videoBlob.size,
               type: videoBlob.type,
               sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
               frameCount: frameCount,
-              expectedFrames: totalFrames
+              expectedFrames: totalFrames,
             });
-            
+
             // Validate and optimize for WhatsApp
             const optimizedVideoUrl = await optimizeVideoForWhatsApp(videoBlob);
             resolve(optimizedVideoUrl);
             return;
           }
-          
+
           // Continue animation
           requestAnimationFrame(animate);
         };
-        
+
         // Start animation
         requestAnimationFrame(animate);
-        
+
         // Fallback timeout to ensure we stop recording after exactly 10 seconds
         setTimeout(async () => {
           if (frameCount < totalFrames) {
-            console.log('⏰ Timeout reached, stopping recording...');
+            console.log("⏰ Timeout reached, stopping recording...");
             try {
               const videoData = await recorder.stop();
-              const videoBlob = new Blob([videoData as BlobPart], { type: 'video/mp4' });
-              
-              console.log('✅ Video recording completed (timeout):', {
+              const videoBlob = new Blob([videoData as BlobPart], {
+                type: "video/mp4",
+              });
+
+              console.log("✅ Video recording completed (timeout):", {
                 size: videoBlob.size,
                 type: videoBlob.type,
                 sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
                 frameCount: frameCount,
-                expectedFrames: totalFrames
+                expectedFrames: totalFrames,
               });
-              
-              const optimizedVideoUrl = await optimizeVideoForWhatsApp(videoBlob);
+
+              const optimizedVideoUrl =
+                await optimizeVideoForWhatsApp(videoBlob);
               resolve(optimizedVideoUrl);
             } catch (error) {
-              console.error('Error in timeout recording:', error);
+              console.error("Error in timeout recording:", error);
               reject(error);
             }
           }
         }, duration + 1000); // 1 second buffer
-        
       } catch (error) {
-        console.error('Error in canvas-record video generation:', error);
+        console.error("Error in canvas-record video generation:", error);
         reject(error);
       }
     });
@@ -1203,41 +1443,40 @@ export default function Create() {
   // Start manual recording
   const startRecording = async () => {
     if (!result || !resultData) {
-      console.error('Missing result data');
+      console.error("Missing result data");
       return;
     }
-    
+
     try {
       setIsRecording(true);
       setRecordingProgress(0);
-      console.log('🎬 Starting manual video recording...');
-      
+      console.log("🎬 Starting manual video recording...");
+
       // Track video generation start
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'InitiateCheckout', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Video Generation',
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "InitiateCheckout", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Video Generation",
           value: 0,
-          currency: 'INR'
+          currency: "INR",
         });
       }
-      
+
       // Track with Google Tag Manager
-      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+      if (typeof window !== "undefined" && (window as any).dataLayer) {
         (window as any).dataLayer.push({
-          event: 'video_generation_start',
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Video Generation',
+          event: "video_generation_start",
+          content_name: "Diwali Postcard Video",
+          content_category: "Video Generation",
           value: 0,
-          currency: 'INR'
+          currency: "INR",
         });
       }
-      
+
       // Initialize canvas recorder
       await initializeCanvasRecorder();
-      
     } catch (error) {
-      console.error('❌ Error starting video recording:', error);
+      console.error("❌ Error starting video recording:", error);
       setIsRecording(false);
     }
   };
@@ -1245,208 +1484,246 @@ export default function Create() {
   // Stop manual recording with proper cleanup
   const stopRecording = async () => {
     try {
-      console.log('🛑 Stopping video recording...');
-      
+      console.log("🛑 Stopping video recording...");
+
       // Check minimum recording duration (at least 2 seconds)
       const minDuration = 2000; // 2 seconds
       const currentDuration = recordingProgress * 1000;
-      
+
       if (currentDuration < minDuration) {
-        console.log(`⏳ Recording too short (${currentDuration}ms), waiting for minimum duration...`);
+        console.log(
+          `⏳ Recording too short (${currentDuration}ms), waiting for minimum duration...`,
+        );
         setTimeout(() => {
           stopRecording();
         }, minDuration - currentDuration);
         return;
       }
-      
+
       setIsRecording(false);
-      
+
       // Handle mobile MediaRecorder
       if (isMobile && mediaRecorderRef.current) {
-        console.log('📱 Stopping mobile MediaRecorder...');
+        console.log("📱 Stopping mobile MediaRecorder...");
         mediaRecorderRef.current.stop();
         setRecordingProgress(0);
         return; // Mobile recorder handles the rest in onstop event
       }
-      
+
       // Handle desktop canvas-record
       if (!canvasRecorder || !Recorder) {
-        console.error('No recorder available or canvas-record not loaded');
+        console.error("No recorder available or canvas-record not loaded");
         return;
       }
-      
+
       // Stop recording using canvas-record API with timeout
-      const videoData = await Promise.race([
+      const videoData = (await Promise.race([
         canvasRecorder.stop(),
-        new Promise((_, reject) => 
-          setTimeout(() => reject(new Error('Video recording timeout')), 10000)
-        )
-      ]) as any;
-      
+        new Promise((_, reject) =>
+          setTimeout(() => reject(new Error("Video recording timeout")), 10000),
+        ),
+      ])) as any;
+
       // Clean up recorder immediately
       setCanvasRecorder(null);
       setRecordingProgress(0);
-      
+
       // canvas-record returns the video data directly
       let videoBlob: Blob;
       if (videoData instanceof Blob) {
         videoBlob = videoData;
       } else {
         // If it's not a Blob, create one
-        videoBlob = new Blob([videoData as BlobPart], { type: 'video/mp4' });
+        videoBlob = new Blob([videoData as BlobPart], { type: "video/mp4" });
       }
-      
+
       // Validate video compatibility
       const isCompatible = validateVideoCompatibility(videoBlob);
-      
+
       if (!isCompatible) {
-        console.warn('⚠️ Video may not be compatible, trying fallback method...');
-        setVideoGenerationError('Primary video generation failed, trying fallback method...');
-        
+        console.warn(
+          "⚠️ Video may not be compatible, trying fallback method...",
+        );
+        setVideoGenerationError(
+          "Primary video generation failed, trying fallback method...",
+        );
+
         // Try fallback video generation
         const fallbackVideoUrl = await generateFallbackVideo();
         if (fallbackVideoUrl) {
           setRecordedVideoUrl(fallbackVideoUrl);
           setVideoGenerationError(null);
-          console.log('✅ Fallback video generation successful');
+          console.log("✅ Fallback video generation successful");
           return;
         } else {
-          setVideoGenerationError('Video generation failed. Please try again or contact support.');
-          console.error('❌ Both primary and fallback video generation failed');
+          setVideoGenerationError(
+            "Video generation failed. Please try again or contact support.",
+          );
+          console.error("❌ Both primary and fallback video generation failed");
           return;
         }
       }
-      
+
       // Create video URL
       const videoUrl = URL.createObjectURL(videoBlob);
       setRecordedVideoUrl(videoUrl);
-      
-      console.log('✅ Video recording completed with canvas-record:', {
+
+      console.log("✅ Video recording completed with canvas-record:", {
         size: videoBlob.size,
         type: videoBlob.type,
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
-        compatible: isCompatible
+        compatible: isCompatible,
       });
-      
+
       // Track successful video generation
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Video Generation',
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Purchase", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Video Generation",
           value: 2,
-          currency: 'INR'
+          currency: "INR",
         });
       }
-      
+
       // Track with Google Tag Manager
-      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+      if (typeof window !== "undefined" && (window as any).dataLayer) {
         (window as any).dataLayer.push({
-          event: 'video_generation_complete',
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Video Generation',
+          event: "video_generation_complete",
+          content_name: "Diwali Postcard Video",
+          content_category: "Video Generation",
           value: 2,
-          currency: 'INR'
+          currency: "INR",
         });
       }
-      
+
       // Automatically upload to Cloudinary with error handling
       try {
-        console.log('📤 Uploading video to Cloudinary...');
+        console.log("📤 Uploading video to Cloudinary...");
         const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
         setCloudinaryVideoUrl(cloudinaryUrl);
-        console.log('✅ Video uploaded to Cloudinary successfully!', cloudinaryUrl);
+        console.log(
+          "✅ Video uploaded to Cloudinary successfully!",
+          cloudinaryUrl,
+        );
       } catch (error) {
-        console.error('❌ Failed to upload video to Cloudinary:', error);
+        console.error("❌ Failed to upload video to Cloudinary:", error);
         // Don't fail the entire process if Cloudinary upload fails
       }
-      
     } catch (error) {
-      console.error('❌ Error stopping video recording:', error);
+      console.error("❌ Error stopping video recording:", error);
       setIsRecording(false);
       setCanvasRecorder(null);
       setRecordingProgress(0);
-      setVideoGenerationError('Video recording failed. Please try again.');
+      setVideoGenerationError("Video recording failed. Please try again.");
     }
   };
 
   // Mobile-specific video recorder using MediaRecorder
-  const initializeMobileVideoRecorder = async (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, backgroundVideo: HTMLVideoElement, rect: DOMRect, scale: number, whatsappSize: number) => {
+  const initializeMobileVideoRecorder = async (
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    backgroundVideo: HTMLVideoElement,
+    rect: DOMRect,
+    scale: number,
+    whatsappSize: number,
+  ) => {
     try {
-      console.log('📱 Initializing mobile video recorder...');
-      
+      console.log("📱 Initializing mobile video recorder...");
+
       // Create a stream from the canvas
       const stream = canvas.captureStream(15); // 15 FPS
-      
+
       // Create MediaRecorder with WhatsApp-compatible settings
       const mediaRecorder = new MediaRecorder(stream, {
         mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
         videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-        audioBitsPerSecond: 32000   // 32kbps audio for WhatsApp
+        audioBitsPerSecond: 32000, // 32kbps audio for WhatsApp
       });
-      
+
       const chunks: Blob[] = [];
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           chunks.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
-        console.log('📱 Mobile video recording stopped');
-        
+        console.log("📱 Mobile video recording stopped");
+
         // Create video blob
-        const videoBlob = new Blob(chunks, { type: 'video/mp4' });
-        
+        const videoBlob = new Blob(chunks, { type: "video/mp4" });
+
         // Validate video
         if (videoBlob.size < 1000) {
-          console.error('❌ Video too small, might be corrupted');
-          setVideoGenerationError('Video recording failed. Please try again.');
+          console.error("❌ Video too small, might be corrupted");
+          setVideoGenerationError("Video recording failed. Please try again.");
           return;
         }
-        
+
         // Create video URL
         const videoUrl = URL.createObjectURL(videoBlob);
         setRecordedVideoUrl(videoUrl);
         setRecordingProgress(0);
-        
-        console.log('✅ Mobile video recording completed:', {
+
+        console.log("✅ Mobile video recording completed:", {
           size: videoBlob.size,
           type: videoBlob.type,
-          sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
+          sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
         });
-        
+
         // Upload to Cloudinary
         try {
-          console.log('📤 Uploading mobile video to Cloudinary...');
+          console.log("📤 Uploading mobile video to Cloudinary...");
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('✅ Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
+          console.log(
+            "�� Mobile video uploaded to Cloudinary successfully!",
+            cloudinaryUrl,
+          );
         } catch (error) {
-          console.error('❌ Failed to upload mobile video to Cloudinary:', error);
+          console.error(
+            "❌ Failed to upload mobile video to Cloudinary:",
+            error,
+          );
         }
       };
-      
+
       // Store media recorder reference
       mediaRecorderRef.current = mediaRecorder;
-      
+
       // Start recording
       mediaRecorder.start();
       setIsRecording(true);
-      
-      console.log('📱 Mobile video recording started');
-      
+
+      console.log("📱 Mobile video recording started");
+
       // Start the animation loop
-      startMobileAnimationLoop(canvas, ctx, backgroundVideo, rect, scale, whatsappSize);
-      
+      startMobileAnimationLoop(
+        canvas,
+        ctx,
+        backgroundVideo,
+        rect,
+        scale,
+        whatsappSize,
+      );
     } catch (error) {
-      console.error('❌ Mobile video recorder initialization failed:', error);
-      setVideoGenerationError('Mobile video recording failed. Please try again.');
+      console.error("❌ Mobile video recorder initialization failed:", error);
+      setVideoGenerationError(
+        "Mobile video recording failed. Please try again.",
+      );
     }
   };
 
   // Mobile animation loop
-  const startMobileAnimationLoop = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, backgroundVideo: HTMLVideoElement, rect: DOMRect, scale: number, whatsappSize: number) => {
+  const startMobileAnimationLoop = (
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    backgroundVideo: HTMLVideoElement,
+    rect: DOMRect,
+    scale: number,
+    whatsappSize: number,
+  ) => {
     let animationId: number | null = null;
     let startTime = Date.now();
     let lastFrameTime = 0;
@@ -1454,16 +1731,16 @@ export default function Create() {
     let isAnimating = true;
     const targetFPS = 15; // 15 FPS for WhatsApp compatibility
     const frameInterval = 1000 / targetFPS; // ~66.67ms per frame
-    
+
     // Pre-load images
     const generatedImg = new Image();
-    generatedImg.crossOrigin = 'anonymous';
+    generatedImg.crossOrigin = "anonymous";
     generatedImg.src = result;
-    
+
     const photoFrameImg = new Image();
-    photoFrameImg.crossOrigin = 'anonymous';
+    photoFrameImg.crossOrigin = "anonymous";
     photoFrameImg.src = "/photo-frame-story.png";
-    
+
     // Cleanup function
     const cleanup = () => {
       isAnimating = false;
@@ -1471,12 +1748,12 @@ export default function Create() {
         cancelAnimationFrame(animationId);
         animationId = null;
       }
-      console.log('🧹 Mobile animation loop cleaned up');
+      console.log("🧹 Mobile animation loop cleaned up");
     };
-    
+
     // Store cleanup function
     (window as any).mobileAnimationCleanup = cleanup;
-    
+
     // Wait for images to load
     Promise.all([
       new Promise((resolve) => {
@@ -1492,139 +1769,184 @@ export default function Create() {
         } else {
           photoFrameImg.onload = () => resolve(void 0);
         }
-      })
-    ]).then(() => {
-      console.log('📸 Mobile images loaded, starting animation loop');
-      
-      const animate = (currentTime: number) => {
-        if (!isAnimating || !isRecording) {
-          cleanup();
-          return;
-        }
-        
-        if (currentTime - lastFrameTime >= frameInterval) {
-          try {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Calculate centered position
-            const offsetX = (whatsappSize - rect.width * scale) / 2;
-            const offsetY = (whatsappSize - rect.height * scale) / 2;
-            
-            // Draw background video
-            if (backgroundVideo.videoWidth > 0 && backgroundVideo.videoHeight > 0) {
-              ctx.drawImage(backgroundVideo, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            }
-            
-            // Draw generated image
-            ctx.drawImage(generatedImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
-            // Draw photo frame
-            ctx.drawImage(photoFrameImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
-            // Draw greeting text
-            if (greeting) {
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
-            }
-            
-            frameCount++;
-            if (frameCount % 30 === 0) {
-              console.log(`📸 Mobile frame ${frameCount} recorded`);
-            }
-            
-            lastFrameTime = currentTime;
-          } catch (error) {
-            console.error('Error in mobile animation loop:', error);
+      }),
+    ])
+      .then(() => {
+        console.log("📸 Mobile images loaded, starting animation loop");
+
+        const animate = (currentTime: number) => {
+          if (!isAnimating || !isRecording) {
             cleanup();
             return;
           }
-        }
-        
-        // Update progress
-        const elapsed = Date.now() - startTime;
-        setRecordingProgress(Math.min(elapsed / 1000, 60));
-        
-        if (isRecording && isAnimating) {
-          animationId = requestAnimationFrame(animate);
-        } else {
-          console.log(`🛑 Mobile animation stopped after ${frameCount} frames`);
-          cleanup();
-        }
-      };
-      
-      animationId = requestAnimationFrame(animate);
-    }).catch((error) => {
-      console.error('Error loading mobile images:', error);
-      cleanup();
-    });
+
+          if (currentTime - lastFrameTime >= frameInterval) {
+            try {
+              // Clear canvas
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+              // Calculate centered position
+              const offsetX = (whatsappSize - rect.width * scale) / 2;
+              const offsetY = (whatsappSize - rect.height * scale) / 2;
+
+              // Draw background video
+              if (
+                backgroundVideo.videoWidth > 0 &&
+                backgroundVideo.videoHeight > 0
+              ) {
+                ctx.drawImage(
+                  backgroundVideo,
+                  offsetX,
+                  offsetY,
+                  rect.width * scale,
+                  rect.height * scale,
+                );
+              }
+
+              // Draw generated image
+              ctx.drawImage(
+                generatedImg,
+                offsetX,
+                offsetY,
+                rect.width * scale,
+                rect.height * scale,
+              );
+
+              // Draw photo frame
+              ctx.drawImage(
+                photoFrameImg,
+                offsetX,
+                offsetY,
+                rect.width * scale,
+                rect.height * scale,
+              );
+
+              // Draw greeting text
+              if (greeting) {
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 32px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+              }
+
+              frameCount++;
+              if (frameCount % 30 === 0) {
+                console.log(`📸 Mobile frame ${frameCount} recorded`);
+              }
+
+              lastFrameTime = currentTime;
+            } catch (error) {
+              console.error("Error in mobile animation loop:", error);
+              cleanup();
+              return;
+            }
+          }
+
+          // Update progress
+          const elapsed = Date.now() - startTime;
+          setRecordingProgress(Math.min(elapsed / 1000, 60));
+
+          if (isRecording && isAnimating) {
+            animationId = requestAnimationFrame(animate);
+          } else {
+            console.log(
+              `🛑 Mobile animation stopped after ${frameCount} frames`,
+            );
+            cleanup();
+          }
+        };
+
+        animationId = requestAnimationFrame(animate);
+      })
+      .catch((error) => {
+        console.error("Error loading mobile images:", error);
+        cleanup();
+      });
   };
 
   // Initialize canvas recorder for manual recording with mobile fallback
   const initializeCanvasRecorder = async () => {
     const canvas = canvasRef.current;
     if (!canvas) {
-      throw new Error('Canvas not found');
+      throw new Error("Canvas not found");
     }
-    
+
     // Get the generated card container
-    const cardContainer = document.querySelector('.generated-card-container') as HTMLElement;
+    const cardContainer = document.querySelector(
+      ".generated-card-container",
+    ) as HTMLElement;
     if (!cardContainer) {
-      throw new Error('Generated card container not found');
+      throw new Error("Generated card container not found");
     }
-    
+
     // Get the background video element
-    const backgroundVideo = cardContainer.querySelector('video[src*="background"]') as HTMLVideoElement;
+    const backgroundVideo = cardContainer.querySelector(
+      'video[src*="background"]',
+    ) as HTMLVideoElement;
     if (!backgroundVideo) {
-      throw new Error('Background video not found');
+      throw new Error("Background video not found");
     }
-    
+
     // Ensure video is playing
     if (backgroundVideo.paused) {
       backgroundVideo.play().catch(console.error);
     }
-    
-    const ctx = canvas.getContext('2d');
+
+    const ctx = canvas.getContext("2d");
     if (!ctx) {
-      throw new Error('Canvas context not found');
+      throw new Error("Canvas context not found");
     }
-    
+
     // Get the container's dimensions and optimize for WhatsApp
     const rect = cardContainer.getBoundingClientRect();
-    
+
     // WhatsApp prefers square videos
     const whatsappSize = 512; // WhatsApp-friendly size
     const maxSize = Math.min(rect.width, rect.height);
     const scale = whatsappSize / maxSize;
-    
+
     canvas.width = whatsappSize;
     canvas.height = whatsappSize;
     ctx.scale(scale, scale);
-    
+
     // For mobile devices, use MediaRecorder fallback
     if (isMobile) {
-      console.log('📱 Mobile detected, using MediaRecorder fallback');
-      await initializeMobileVideoRecorder(canvas, ctx, backgroundVideo, rect, scale, whatsappSize);
+      console.log("📱 Mobile detected, using MediaRecorder fallback");
+      await initializeMobileVideoRecorder(
+        canvas,
+        ctx,
+        backgroundVideo,
+        rect,
+        scale,
+        whatsappSize,
+      );
       return;
     }
-    
+
     // Load canvas-record if not already loaded
     await loadCanvasRecord();
-    
+
     if (!Recorder) {
-      console.warn('⚠️ Canvas-record not available, falling back to MediaRecorder');
-      await initializeMobileVideoRecorder(canvas, ctx, backgroundVideo, rect, scale, whatsappSize);
+      console.warn(
+        "⚠️ Canvas-record not available, falling back to MediaRecorder",
+      );
+      await initializeMobileVideoRecorder(
+        canvas,
+        ctx,
+        backgroundVideo,
+        rect,
+        scale,
+        whatsappSize,
+      );
       return;
     }
-    
+
     try {
       // Initialize Canvas Recorder with desktop-optimized settings
       const recorder = new Recorder(ctx, {
-        extension: 'mp4',
-        target: 'in-browser',
+        extension: "mp4",
+        target: "in-browser",
         encoderOptions: {
           // WhatsApp-compatible settings
           width: whatsappSize,
@@ -1632,49 +1954,72 @@ export default function Create() {
           fps: 15, // 15 FPS for WhatsApp
           bitrate: 200000, // 200kbps for WhatsApp
           // H.264 Baseline Profile for maximum WhatsApp compatibility
-          profile: 'baseline',
-          level: '3.0',
+          profile: "baseline",
+          level: "3.0",
           keyframeInterval: 15,
-          pixelFormat: 'yuv420p',
-          preset: 'ultrafast',
+          pixelFormat: "yuv420p",
+          preset: "ultrafast",
           crf: 28, // Higher compression for smaller file size
           maxrate: 200000,
           bufsize: 400000,
           g: 15, // GOP size
           sc_threshold: 0,
-          movflags: '+faststart', // Fast start for streaming
-          audioCodec: 'aac',
+          movflags: "+faststart", // Fast start for streaming
+          audioCodec: "aac",
           audioBitrate: 32000, // 32kbps for WhatsApp
           audioChannels: 1,
-          audioSampleRate: 16000
+          audioSampleRate: 16000,
         },
         onStatusChange: (status) => {
-          console.log('Recorder status:', status);
+          console.log("Recorder status:", status);
           setRecorderStatus(String(status));
-        }
+        },
       });
-      
+
       setCanvasRecorder(recorder);
-      
+
       // Start recording using official API
       await recorder.start({
         filename: `diwali-postcard-${Date.now()}.mp4`,
-        initOnly: false // Start recording immediately
+        initOnly: false, // Start recording immediately
       });
-      
-      console.log('📸 Manual recording started - click stop when ready');
-      
+
+      console.log("📸 Manual recording started - click stop when ready");
+
       // Start the animation loop for manual recording
-      startManualAnimationLoop(canvas, ctx, backgroundVideo, rect, scale, whatsappSize);
-      
+      startManualAnimationLoop(
+        canvas,
+        ctx,
+        backgroundVideo,
+        rect,
+        scale,
+        whatsappSize,
+      );
     } catch (error) {
-      console.error('❌ Canvas recorder failed, falling back to MediaRecorder:', error);
-      await initializeMobileVideoRecorder(canvas, ctx, backgroundVideo, rect, scale, whatsappSize);
+      console.error(
+        "❌ Canvas recorder failed, falling back to MediaRecorder:",
+        error,
+      );
+      await initializeMobileVideoRecorder(
+        canvas,
+        ctx,
+        backgroundVideo,
+        rect,
+        scale,
+        whatsappSize,
+      );
     }
   };
 
   // Manual animation loop using canvas-record API with proper cleanup
-  const startManualAnimationLoop = (canvas: HTMLCanvasElement, ctx: CanvasRenderingContext2D, backgroundVideo: HTMLVideoElement, rect: DOMRect, scale: number, whatsappSize: number) => {
+  const startManualAnimationLoop = (
+    canvas: HTMLCanvasElement,
+    ctx: CanvasRenderingContext2D,
+    backgroundVideo: HTMLVideoElement,
+    rect: DOMRect,
+    scale: number,
+    whatsappSize: number,
+  ) => {
     let animationId: number | null = null;
     let startTime = Date.now();
     let lastFrameTime = 0;
@@ -1682,16 +2027,16 @@ export default function Create() {
     let isAnimating = true;
     const targetFPS = isMobile ? 12 : 15; // Mobile-optimized frame rate
     const frameInterval = 1000 / targetFPS; // ~83.33ms per frame for mobile, ~66.67ms for desktop
-    
+
     // Pre-load images to avoid async issues
     const generatedImg = new Image();
-    generatedImg.crossOrigin = 'anonymous';
+    generatedImg.crossOrigin = "anonymous";
     generatedImg.src = result;
-    
+
     const photoFrameImg = new Image();
-    photoFrameImg.crossOrigin = 'anonymous';
+    photoFrameImg.crossOrigin = "anonymous";
     photoFrameImg.src = "/photo-frame-story.png";
-    
+
     // Cleanup function
     const cleanup = () => {
       isAnimating = false;
@@ -1699,12 +2044,12 @@ export default function Create() {
         cancelAnimationFrame(animationId);
         animationId = null;
       }
-      console.log('🧹 Animation loop cleaned up');
+      console.log("🧹 Animation loop cleaned up");
     };
-    
+
     // Store cleanup function for later use
     (window as any).animationCleanup = cleanup;
-    
+
     // Wait for images to load before starting animation
     Promise.all([
       new Promise((resolve) => {
@@ -1720,259 +2065,306 @@ export default function Create() {
         } else {
           photoFrameImg.onload = () => resolve(void 0);
         }
-      })
-    ]).then(() => {
-      console.log('📸 Images loaded, starting animation loop');
-      
-      const animate = (currentTime: number) => {
-        // Check if animation should continue
-        if (!isAnimating || !isRecording) {
-          cleanup();
-          return;
-        }
-        
-        // Check if we should record this frame
-        if (currentTime - lastFrameTime >= frameInterval) {
-          try {
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-            
-            // Calculate centered position for square canvas
-            const offsetX = (whatsappSize - rect.width * scale) / 2;
-            const offsetY = (whatsappSize - rect.height * scale) / 2;
-            
-            // Draw the background video
-            if (backgroundVideo.videoWidth > 0 && backgroundVideo.videoHeight > 0) {
-              ctx.drawImage(backgroundVideo, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            }
-            
-            // Draw the generated image
-            ctx.drawImage(generatedImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
-            // Draw the photo frame
-            ctx.drawImage(photoFrameImg, offsetX, offsetY, rect.width * scale, rect.height * scale);
-            
-            // Draw the greeting text
-            if (greeting) {
-              ctx.fillStyle = '#ffffff';
-              ctx.font = 'bold 24px Arial';
-              ctx.textAlign = 'center';
-              ctx.textBaseline = 'middle';
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 60);
-            }
-            
-            // Record this frame using canvas-record API
-            if (canvasRecorder && isAnimating) {
-              try {
-                canvasRecorder.step();
-                frameCount++;
-                if (frameCount % 30 === 0) { // Log every 30 frames to reduce spam
-                  console.log(`📸 Frame ${frameCount} recorded`);
-                }
-              } catch (error) {
-                console.error('Error recording frame:', error);
-                cleanup();
-                return;
-              }
-            }
-            
-            lastFrameTime = currentTime;
-          } catch (error) {
-            console.error('Error in animation loop:', error);
+      }),
+    ])
+      .then(() => {
+        console.log("📸 Images loaded, starting animation loop");
+
+        const animate = (currentTime: number) => {
+          // Check if animation should continue
+          if (!isAnimating || !isRecording) {
             cleanup();
             return;
           }
-        }
-        
-        // Update progress (show recording time)
-        const elapsed = Date.now() - startTime;
-        setRecordingProgress(Math.min(elapsed / 1000, 60)); // Max 60 seconds
-        
-        // Continue animation if still recording and animating
-        if (isRecording && isAnimating) {
-          animationId = requestAnimationFrame(animate);
-        } else {
-          console.log(`🛑 Animation stopped after ${frameCount} frames`);
-          cleanup();
-        }
-      };
-      
-      // Start animation
-      animationId = requestAnimationFrame(animate);
-    }).catch((error) => {
-      console.error('Error loading images for animation:', error);
-      cleanup();
-    });
+
+          // Check if we should record this frame
+          if (currentTime - lastFrameTime >= frameInterval) {
+            try {
+              // Clear canvas
+              ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+              // Calculate centered position for square canvas
+              const offsetX = (whatsappSize - rect.width * scale) / 2;
+              const offsetY = (whatsappSize - rect.height * scale) / 2;
+
+              // Draw the background video
+              if (
+                backgroundVideo.videoWidth > 0 &&
+                backgroundVideo.videoHeight > 0
+              ) {
+                ctx.drawImage(
+                  backgroundVideo,
+                  offsetX,
+                  offsetY,
+                  rect.width * scale,
+                  rect.height * scale,
+                );
+              }
+
+              // Draw the generated image
+              ctx.drawImage(
+                generatedImg,
+                offsetX,
+                offsetY,
+                rect.width * scale,
+                rect.height * scale,
+              );
+
+              // Draw the photo frame
+              ctx.drawImage(
+                photoFrameImg,
+                offsetX,
+                offsetY,
+                rect.width * scale,
+                rect.height * scale,
+              );
+
+              // Draw the greeting text
+              if (greeting) {
+                ctx.fillStyle = "#ffffff";
+                ctx.font = "bold 32px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+              }
+
+              // Record this frame using canvas-record API
+              if (canvasRecorder && isAnimating) {
+                try {
+                  canvasRecorder.step();
+                  frameCount++;
+                  if (frameCount % 30 === 0) {
+                    // Log every 30 frames to reduce spam
+                    console.log(`📸 Frame ${frameCount} recorded`);
+                  }
+                } catch (error) {
+                  console.error("Error recording frame:", error);
+                  cleanup();
+                  return;
+                }
+              }
+
+              lastFrameTime = currentTime;
+            } catch (error) {
+              console.error("Error in animation loop:", error);
+              cleanup();
+              return;
+            }
+          }
+
+          // Update progress (show recording time)
+          const elapsed = Date.now() - startTime;
+          setRecordingProgress(Math.min(elapsed / 1000, 60)); // Max 60 seconds
+
+          // Continue animation if still recording and animating
+          if (isRecording && isAnimating) {
+            animationId = requestAnimationFrame(animate);
+          } else {
+            console.log(`🛑 Animation stopped after ${frameCount} frames`);
+            cleanup();
+          }
+        };
+
+        // Start animation
+        animationId = requestAnimationFrame(animate);
+      })
+      .catch((error) => {
+        console.error("Error loading images for animation:", error);
+        cleanup();
+      });
   };
 
   // Legacy video recording functions (keeping for fallback)
   const startVideoRecording = async () => {
     if (!result || !resultData) return;
-    
+
     try {
       setIsRecording(true);
       recordedChunksRef.current = [];
-      
+
       // Get the generated card container
-      const cardContainer = document.querySelector('.generated-card-container') as HTMLElement;
+      const cardContainer = document.querySelector(
+        ".generated-card-container",
+      ) as HTMLElement;
       if (!cardContainer) {
-        console.error('Generated card container not found');
+        console.error("Generated card container not found");
         setIsRecording(false);
         return;
       }
-      
+
       // Get the background video element
-      const backgroundVideo = cardContainer.querySelector('video[src*="background"]') as HTMLVideoElement;
+      const backgroundVideo = cardContainer.querySelector(
+        'video[src*="background"]',
+      ) as HTMLVideoElement;
       if (!backgroundVideo) {
-        console.error('Background video not found');
+        console.error("Background video not found");
         setIsRecording(false);
         return;
       }
-      
+
       // Ensure video is playing
       if (backgroundVideo.paused) {
         backgroundVideo.play().catch(console.error);
       }
-      
+
       // Create a canvas to capture the container
       const canvas = canvasRef.current;
       if (!canvas) return;
-      
-      const ctx = canvas.getContext('2d');
+
+      const ctx = canvas.getContext("2d");
       if (!ctx) return;
-      
+
       // Get the container's dimensions
       const rect = cardContainer.getBoundingClientRect();
       const scale = 2; // Higher resolution
       canvas.width = rect.width * scale;
       canvas.height = rect.height * scale;
       ctx.scale(scale, scale);
-      
+
       // Create a stream from the canvas
       const stream = canvas.captureStream(30); // 30 FPS
-      
+
       // Check video format support and choose best option for social media
       const { supported, mp4Supported } = checkVideoFormatSupport();
-      
-      let mimeType = 'video/mp4';
-      
+
+      let mimeType = "video/mp4";
+
       // Prioritize MP4 for social media compatibility
-      if (MediaRecorder.isTypeSupported('video/mp4;codecs=h264')) {
-        mimeType = 'video/mp4;codecs=h264';
-        console.log('✅ Using MP4 with H.264 codec - Best for social media');
-      } else if (MediaRecorder.isTypeSupported('video/mp4')) {
-        mimeType = 'video/mp4';
-        console.log('✅ Using MP4 format - Good for social media');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp9')) {
-        mimeType = 'video/webm;codecs=vp9';
-        console.log('⚠️ MP4 not supported, using WebM VP9 - Limited social media compatibility');
-      } else if (MediaRecorder.isTypeSupported('video/webm;codecs=vp8')) {
-        mimeType = 'video/webm;codecs=vp8';
-        console.log('⚠️ MP4 not supported, using WebM VP8 - Limited social media compatibility');
+      if (MediaRecorder.isTypeSupported("video/mp4;codecs=h264")) {
+        mimeType = "video/mp4;codecs=h264";
+        console.log("✅ Using MP4 with H.264 codec - Best for social media");
+      } else if (MediaRecorder.isTypeSupported("video/mp4")) {
+        mimeType = "video/mp4";
+        console.log("✅ Using MP4 format - Good for social media");
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp9")) {
+        mimeType = "video/webm;codecs=vp9";
+        console.log(
+          "⚠️ MP4 not supported, using WebM VP9 - Limited social media compatibility",
+        );
+      } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
+        mimeType = "video/webm;codecs=vp8";
+        console.log(
+          "⚠️ MP4 not supported, using WebM VP8 - Limited social media compatibility",
+        );
       } else {
-        console.warn('❌ No supported video format found, using default');
+        console.warn("❌ No supported video format found, using default");
       }
-      
+
       // Show user warning if MP4 is not supported
       if (!mp4Supported) {
-        console.warn('MP4 recording not supported in this browser. For best social media compatibility, use Chrome or Edge.');
+        console.warn(
+          "MP4 recording not supported in this browser. For best social media compatibility, use Chrome or Edge.",
+        );
       }
-      
+
       const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: mimeType
+        mimeType: mimeType,
       });
-      
+
       mediaRecorderRef.current = mediaRecorder;
-      
+
       mediaRecorder.ondataavailable = (event) => {
         if (event.data.size > 0) {
           recordedChunksRef.current.push(event.data);
         }
       };
-      
+
       mediaRecorder.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         setIsRecording(false);
-        
-        // Automatically upload to Cloudinary
-        try {
-          console.log('📤 Uploading video to Cloudinary...');
-          const cloudinaryUrl = await uploadVideoToCloudinary(url);
-          setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('✅ Video uploaded to Cloudinary successfully!', cloudinaryUrl);
-        } catch (error) {
-          console.error('❌ Failed to upload video to Cloudinary:', error);
-        }
-        
+
         // Log the final format for debugging
-        console.log(`✅ Video recorded successfully as ${mimeType}`);
-        if (mimeType.includes('mp4')) {
-          console.log('🎉 MP4 format - Perfect for social media sharing!');
+        console.log(`�� Video recorded successfully as ${mimeType}`);
+        if (mimeType.includes("mp4")) {
+          console.log("🎉 MP4 format - Perfect for social media sharing!");
         } else {
-          console.log('⚠️ Non-MP4 format - May have limited social media compatibility');
+          console.log(
+            "⚠️ Non-MP4 format - May have limited social media compatibility",
+          );
         }
-        
-        // Automatically upload to Cloudinary for sharing
+
+        // Upload the recorded blob to Cloudinary (server-side) once
         try {
-          console.log('📤 Uploading video to Cloudinary...');
-          await uploadVideoToCloudinary(blob);
-          console.log('✅ Video uploaded to Cloudinary successfully!');
+          console.log("📤 Uploading recorded video blob to Cloudinary...");
+          const cloudinaryUrl = await uploadVideoToCloudinary(blob);
+          setCloudinaryVideoUrl(cloudinaryUrl);
+          console.log(
+            "✅ Video uploaded to Cloudinary successfully!",
+            cloudinaryUrl,
+          );
         } catch (error) {
-          console.error('❌ Failed to upload video to Cloudinary:', error);
-          // Don't show error to user as this is automatic
+          console.error("❌ Failed to upload video to Cloudinary:", error);
         }
       };
-      
+
       // Start recording
       mediaRecorder.start();
-      
+
       // Pre-load both the generated image and photo frame
       const generatedImg = new Image();
       const photoFrameImg = new Image();
-      generatedImg.crossOrigin = 'anonymous';
-      photoFrameImg.crossOrigin = 'anonymous';
-      
+      generatedImg.crossOrigin = "anonymous";
+      photoFrameImg.crossOrigin = "anonymous";
+
       let imagesLoaded = 0;
       const totalImages = 2;
-      
+
       const checkAllImagesLoaded = () => {
         imagesLoaded++;
         if (imagesLoaded === totalImages) {
           startRecording();
         }
       };
-      
+
       const startRecording = () => {
-        console.log('Generated image loaded successfully:', generatedImg.width, 'x', generatedImg.height);
+        console.log(
+          "Generated image loaded successfully:",
+          generatedImg.width,
+          "x",
+          generatedImg.height,
+        );
         // Record for 5 seconds
         const recordDuration = 5000;
         const startTime = Date.now();
-        
+
         const drawFrame = () => {
           if (Date.now() - startTime >= recordDuration) {
             mediaRecorder.stop();
             return;
           }
-          
+
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
-          
+
           // First, draw the background video
-          if (backgroundVideo.videoWidth > 0 && backgroundVideo.videoHeight > 0) {
-            console.log('Drawing background video:', backgroundVideo.videoWidth, 'x', backgroundVideo.videoHeight);
+          if (
+            backgroundVideo.videoWidth > 0 &&
+            backgroundVideo.videoHeight > 0
+          ) {
+            console.log(
+              "Drawing background video:",
+              backgroundVideo.videoWidth,
+              "x",
+              backgroundVideo.videoHeight,
+            );
             ctx.drawImage(backgroundVideo, 0, 0, rect.width, rect.height);
           } else {
-            console.log('Background video not ready:', backgroundVideo.videoWidth, 'x', backgroundVideo.videoHeight);
+            console.log(
+              "Background video not ready:",
+              backgroundVideo.videoWidth,
+              "x",
+              backgroundVideo.videoHeight,
+            );
           }
-          
+
           // Calculate position to center the image in the frame
           const imgAspectRatio = generatedImg.width / generatedImg.height;
           const containerAspectRatio = rect.width / rect.height;
-          
+
           let drawWidth, drawHeight, drawX, drawY;
-          
+
           if (imgAspectRatio > containerAspectRatio) {
             // Image is wider than container
             drawWidth = rect.width * 0.8;
@@ -1986,43 +2378,43 @@ export default function Create() {
             drawX = (rect.width - drawWidth) / 2;
             drawY = (rect.height - drawHeight) / 2;
           }
-          
+
           // Draw the generated image
-          console.log('Drawing image at:', drawX, drawY, drawWidth, drawHeight);
+          console.log("Drawing image at:", drawX, drawY, drawWidth, drawHeight);
           ctx.drawImage(generatedImg, drawX, drawY, drawWidth, drawHeight);
-          
+
           // Draw the photo frame on top
           if (photoFrameImg.complete) {
-            console.log('Drawing photo frame');
+            console.log("Drawing photo frame");
             ctx.drawImage(photoFrameImg, 0, 0, rect.width, rect.height);
           }
-          
+
           // Draw greeting text at the bottom
           if (greeting) {
             ctx.save();
-            
+
             // Add a subtle background for better text readability
-            ctx.fillStyle = 'rgba(0, 0, 0, 0)';
+            ctx.fillStyle = "rgba(0, 0, 0, 0)";
             ctx.fillRect(0, rect.height - 50, rect.width, 50);
-            
-            ctx.fillStyle = 'white';
-            ctx.font = 'regular 16px Arial';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            
+
+            ctx.fillStyle = "white";
+            ctx.font = "bold 28px Arial";
+            ctx.textAlign = "center";
+            ctx.textBaseline = "middle";
+
             // Add text shadow for better visibility
-            ctx.shadowColor = 'rgba(0, 0, 0, 0)';
+            ctx.shadowColor = "rgba(0, 0, 0, 0)";
             ctx.shadowBlur = 2;
             ctx.shadowOffsetX = 1;
             ctx.shadowOffsetY = 1;
-            
+
             // Split greeting into lines if it's too long
-            const words = greeting.split(' ');
+            const words = greeting.split(" ");
             const lines = [];
-            let currentLine = '';
-            
+            let currentLine = "";
+
             for (const word of words) {
-              const testLine = currentLine + (currentLine ? ' ' : '') + word;
+              const testLine = currentLine + (currentLine ? " " : "") + word;
               const metrics = ctx.measureText(testLine);
               if (metrics.width > rect.width - 40) {
                 if (currentLine) {
@@ -2038,56 +2430,72 @@ export default function Create() {
             if (currentLine) {
               lines.push(currentLine);
             }
-            
+
             // Draw each line
             lines.forEach((line, index) => {
-              ctx.fillText(line, rect.width / 2, rect.height - 25 + (index - lines.length / 2) * 18);
+              ctx.fillText(
+                line,
+                rect.width / 2,
+                rect.height - 30 + (index - lines.length / 2) * 28,
+              );
             });
-            
+
             ctx.restore();
           }
-          
+
           // Continue recording
           requestAnimationFrame(drawFrame);
         };
-        
+
         drawFrame();
       };
-      
+
       generatedImg.onload = () => {
-        console.log('Generated image loaded successfully:', generatedImg.width, 'x', generatedImg.height);
+        console.log(
+          "Generated image loaded successfully:",
+          generatedImg.width,
+          "x",
+          generatedImg.height,
+        );
         checkAllImagesLoaded();
       };
-      
+
       photoFrameImg.onload = () => {
-        console.log('Photo frame loaded successfully:', photoFrameImg.width, 'x', photoFrameImg.height);
+        console.log(
+          "Photo frame loaded successfully:",
+          photoFrameImg.width,
+          "x",
+          photoFrameImg.height,
+        );
         checkAllImagesLoaded();
       };
-      
+
       generatedImg.onerror = (error) => {
-        console.error('Error loading generated image:', error);
-        console.log('Image source:', result);
+        console.error("Error loading generated image:", error);
+        console.log("Image source:", result);
         setIsRecording(false);
       };
-      
+
       photoFrameImg.onerror = (error) => {
-        console.error('Error loading photo frame:', error);
+        console.error("Error loading photo frame:", error);
         setIsRecording(false);
       };
-      
+
       generatedImg.src = result;
-      photoFrameImg.src = '/photo-frame-story.png';
-      
+      photoFrameImg.src = "/photo-frame-story.png";
+
       // Add timeout to prevent hanging
       setTimeout(() => {
-        if (isRecording && (!generatedImg.complete || !photoFrameImg.complete)) {
-          console.error('Image loading timeout');
+        if (
+          isRecording &&
+          (!generatedImg.complete || !photoFrameImg.complete)
+        ) {
+          console.error("Image loading timeout");
           setIsRecording(false);
         }
       }, 10000); // 10 second timeout
-      
     } catch (error) {
-      console.error('Error starting video recording:', error);
+      console.error("Error starting video recording:", error);
       setIsRecording(false);
     }
   };
@@ -2095,50 +2503,54 @@ export default function Create() {
   const uploadVideoToCloudinary = async (videoUrl: string | Blob) => {
     try {
       setVideoUploading(true);
-      
-      // Handle both string URL and Blob
+
+      // Get Blob
       let videoBlob: Blob;
-      if (typeof videoUrl === 'string') {
-        // If it's a string URL, fetch the blob
+      if (typeof videoUrl === "string") {
         const response = await fetch(videoUrl);
         videoBlob = await response.blob();
       } else {
-        // If it's already a Blob, use it directly
         videoBlob = videoUrl;
       }
-      
-      console.log('🔧 Video details:', {
+
+      console.log("🔧 Video details:", {
         videoSize: videoBlob.size,
         videoType: videoBlob.type,
-        sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
+        sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
       });
-      
-      // Use server-side signed upload endpoint
-      const formData = new FormData();
-      formData.append('video', videoBlob, 'festive-postcard-video.mp4');
-      
-      console.log('📤 Uploading via server-side signed upload...');
-      
-      const uploadResponse = await fetch('/api/upload-video', {
-        method: 'POST',
-        body: formData,
+
+      // Always use server-side signed upload to avoid CORS/stream issues
+      // Send raw binary to server to avoid body-stream issues
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      console.log("📤 Uploading raw binary to server-side signed upload...");
+
+      const uploadResponse = await fetch("/api/upload-video", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/octet-stream",
+          "x-filename": `festive-postcard-${Date.now()}.mp4`,
+        },
+        body: arrayBuffer,
       });
-      
-      console.log('📡 Upload response status:', uploadResponse.status);
-      
+
+      console.log("📡 Upload response status:", uploadResponse.status);
+
       if (!uploadResponse.ok) {
         const errorText = await uploadResponse.text();
-        console.error('❌ Upload failed:', errorText);
-        throw new Error(`Cloudinary upload failed: ${uploadResponse.status} - ${errorText}`);
+        console.error("❌ Upload failed:", errorText);
+        throw new Error(
+          `Cloudinary upload failed: ${uploadResponse.status} - ${errorText}`,
+        );
       }
-      
+
       const data = await uploadResponse.json();
-      console.log('✅ Video uploaded to Cloudinary:', data.secure_url);
-      setCloudinaryVideoUrl(data.secure_url);
-      return data.secure_url;
+      const url = data.secure_url || data.originalUrl || data.secureUrl;
+      console.log("✅ Video uploaded to Cloudinary (server):", url);
+      setCloudinaryVideoUrl(url);
+      return url;
     } catch (error) {
-      console.error('❌ Error uploading video to Cloudinary:', error);
-      setUploadError(error instanceof Error ? error.message : 'Upload failed');
+      console.error("❌ Error uploading video to Cloudinary:", error);
+      setUploadError(error instanceof Error ? error.message : "Upload failed");
       throw error;
     } finally {
       setVideoUploading(false);
@@ -2150,74 +2562,91 @@ export default function Create() {
       try {
         setDownloading(true);
         let videoUrl = recordedVideoUrl;
-        
+
         // Always try to upload to Cloudinary first for better quality
-        console.log('🔄 Uploading video to Cloudinary...');
-        
+        console.log("🔄 Uploading video to Cloudinary...");
+
         try {
           // Upload the video using our API endpoint
-          console.log('🔄 Uploading video via API...');
-          
+          console.log("🔄 Uploading video via API...");
+
           // Fetch the video blob
           const response = await fetch(recordedVideoUrl);
           const blob = await response.blob();
-          
-          // Convert blob to base64 for API
+
+          // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
-          const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-          const videoData = `data:${blob.type};base64,${base64}`;
-          
-          console.log('🔧 Upload Details:', {
+          console.log("🔧 Upload Details:", {
             videoSize: blob.size,
             videoType: blob.type,
-            cloudinaryConfig: cloudinaryConfig
+            cloudinaryConfig: cloudinaryConfig,
           });
-          
-          const uploadResponse = await fetch('/api/upload-video', {
-            method: 'POST',
+
+          const uploadResponse = await fetch("/api/upload-video", {
+            method: "POST",
             headers: {
-              'Content-Type': 'application/json',
+              "Content-Type": "application/octet-stream",
+              "x-filename": `festive-postcard-${Date.now()}.mp4`,
             },
-            body: JSON.stringify({
-              videoData: videoData,
-              fileName: `festive-postcard-${Date.now()}`
-            }),
+            body: arrayBuffer,
           });
-          
-          console.log('📡 Upload response status:', uploadResponse.status);
-          
+
+          console.log("📡 Upload response status:", uploadResponse.status);
+
           if (!uploadResponse.ok) {
             const errorData = await uploadResponse.json();
-            throw new Error(`Upload failed: ${uploadResponse.status} - ${errorData.error || errorData.details}`);
+            throw new Error(
+              `Upload failed: ${uploadResponse.status} - ${errorData.error || errorData.details}`,
+            );
           }
-          
+
           const uploadData = await uploadResponse.json();
-          console.log('✅ Video uploaded successfully:', uploadData);
-          
+          console.log("✅ Video uploaded successfully:", uploadData);
+
           videoUrl = uploadData.url;
-          
+
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
-          
-          console.log('✅ Video processed through Cloudinary MP4 converter:', videoUrl);
+
+          console.log(
+            "✅ Video processed through Cloudinary MP4 converter:",
+            videoUrl,
+          );
         } catch (cloudinaryError) {
-          console.error('❌ Cloudinary processing failed:', cloudinaryError);
-          console.log('⚠️ Falling back to original video URL');
+          console.error("❌ Cloudinary processing failed:", cloudinaryError);
+          console.log("⚠️ Falling back to original video URL");
           // Fallback to original video
           videoUrl = recordedVideoUrl;
         }
-        
+
         // Open video URL in new tab
-        window.open(videoUrl, '_blank', 'noopener,noreferrer');
-        
-        console.log('✅ Video URL opened in new tab:', videoUrl);
+        window.open(videoUrl, "_blank", "noopener,noreferrer");
+
+        console.log("✅ Video URL opened in new tab:", videoUrl);
       } catch (error) {
-        console.error('❌ Failed to open video:', error);
+        console.error("❌ Failed to open video:", error);
         // Fallback: open original video in new tab
-        window.open(recordedVideoUrl, '_blank');
+        window.open(recordedVideoUrl, "_blank");
       } finally {
         setDownloading(false);
       }
+    }
+  };
+
+  // Build standardized social URL: https://res.cloudinary.com/<host>/video/upload/f_mp4,q_auto:best/v{version}/diwali-postcards/videos/{filename}.mp4
+  const buildSocialUrl = (url?: string | null) => {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      const filename = parsed.pathname.split("/").pop() || "";
+      const hostname = parsed.hostname; // includes cloud name like dsol5tcu0
+      // Try to extract version from the path: /v12345/
+      const versionMatch = parsed.pathname.match(/\/v(\d+)\//);
+      const versionSegment = versionMatch ? `/v${versionMatch[1]}` : "";
+      const transform = "f_mp4,q_auto:best";
+      return `${parsed.protocol}//${hostname}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${filename}`;
+    } catch (e) {
+      return null;
     }
   };
 
@@ -2226,157 +2655,171 @@ export default function Create() {
     if (cloudinaryVideoUrl) {
       // Instagram doesn't support direct video sharing via URL
       // Open Instagram with instructions
-      const message = "To share your Diwali postcard video on Instagram:\n\n1. Download the video first\n2. Open Instagram\n3. Create a new post\n4. Upload the downloaded video\n5. Add your caption and share!";
+      const message =
+        "To share your Diwali postcard video on Instagram:\n\n1. Download the video first\n2. Open Instagram\n3. Create a new post\n4. Upload the downloaded video\n5. Add your caption and share!";
       alert(message);
-      
+
       // Also open Instagram
-      window.open('https://www.instagram.com/', '_blank');
+      window.open("https://www.instagram.com/", "_blank");
     }
   };
 
   const shareToTikTok = () => {
     if (cloudinaryVideoUrl) {
       // TikTok doesn't support direct video sharing via URL
-      const message = "To share your Diwali postcard video on TikTok:\n\n1. Download the video first\n2. Open TikTok\n3. Tap the + button to create\n4. Upload the downloaded video\n5. Add effects, music, and share!";
+      const message =
+        "To share your Diwali postcard video on TikTok:\n\n1. Download the video first\n2. Open TikTok\n3. Tap the + button to create\n4. Upload the downloaded video\n5. Add effects, music, and share!";
       alert(message);
-      
+
       // Also open TikTok
-      window.open('https://www.tiktok.com/', '_blank');
+      window.open("https://www.tiktok.com/", "_blank");
     }
   };
 
   const shareToWhatsApp = () => {
     if (cloudinaryVideoUrl) {
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      
+
       // Track WhatsApp sharing
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'WhatsApp'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "WhatsApp",
         });
       }
-      
+
       // Track with Google Tag Manager
-      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+      if (typeof window !== "undefined" && (window as any).dataLayer) {
         (window as any).dataLayer.push({
-          event: 'social_share',
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'WhatsApp'
+          event: "social_share",
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "WhatsApp",
         });
       }
-      
+
       // Add WhatsApp-optimized transformations to the Cloudinary URL
       // This ensures the video is in a format WhatsApp can handle
-      const optimizedUrl = cloudinaryVideoUrl.replace('/upload/', '/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive/');
-      
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + ' ' + optimizedUrl)}`;
-      window.open(whatsappUrl, '_blank');
+      const optimizedUrl = cloudinaryVideoUrl.replace(
+        "/upload/",
+        "/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive/",
+      );
+
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + optimizedUrl)}`;
+      window.open(whatsappUrl, "_blank");
     } else if (recordedVideoUrl) {
       // Track WhatsApp sharing
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'WhatsApp'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "WhatsApp",
         });
       }
-      
+
       // Fallback to local video URL if Cloudinary upload is not ready
-      const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + ' ' + recordedVideoUrl)}`;
-      window.open(whatsappUrl, '_blank');
+      const message = "Check out my festive Diwali postcard video! ���✨";
+      const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + " " + recordedVideoUrl)}`;
+      window.open(whatsappUrl, "_blank");
     } else {
-      alert('Please generate a video first before sharing to WhatsApp.');
+      alert("Please generate a video first before sharing to WhatsApp.");
     }
   };
 
   const shareToTwitter = () => {
     if (cloudinaryVideoUrl) {
       // Track Twitter sharing
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'Twitter'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "Twitter",
         });
       }
-      
+
       // Track with Google Tag Manager
-      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+      if (typeof window !== "undefined" && (window as any).dataLayer) {
         (window as any).dataLayer.push({
-          event: 'social_share',
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'Twitter'
+          event: "social_share",
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "Twitter",
         });
       }
-      
-      const message = "Check out my festive Diwali postcard video! 🎆✨ #Diwali #Festive #Postcard";
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(cloudinaryVideoUrl)}`;
-      window.open(twitterUrl, '_blank');
+
+      const message =
+        "Check out my festive Diwali postcard video! 🎆✨ #Diwali #Festive #Postcard";
+      const socialUrl =
+        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(socialUrl)}`;
+      window.open(twitterUrl, "_blank");
     }
   };
 
   const shareToFacebook = () => {
     if (cloudinaryVideoUrl) {
       // Track Facebook sharing
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'Facebook'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "Facebook",
         });
       }
-      
+
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(cloudinaryVideoUrl)}&quote=${encodeURIComponent(message)}`;
-      window.open(facebookUrl, '_blank');
+      const socialUrl =
+        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(socialUrl)}&quote=${encodeURIComponent(message)}`;
+      window.open(facebookUrl, "_blank");
     }
   };
 
   const shareToTelegram = () => {
     if (cloudinaryVideoUrl) {
       // Track Telegram sharing
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'Telegram'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "Telegram",
         });
       }
-      
+
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(cloudinaryVideoUrl)}&text=${encodeURIComponent(message)}`;
-      window.open(telegramUrl, '_blank');
+      const socialUrl =
+        buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(socialUrl)}&text=${encodeURIComponent(message)}`;
+      window.open(telegramUrl, "_blank");
     }
   };
 
   const copyVideoLink = async () => {
     if (cloudinaryVideoUrl) {
       // Track link copying
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Share', {
-          content_name: 'Diwali Postcard Video',
-          content_category: 'Social Sharing',
-          method: 'Copy Link'
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Share", {
+          content_name: "Diwali Postcard Video",
+          content_category: "Social Sharing",
+          method: "Copy Link",
         });
       }
-      
+
       try {
-        await navigator.clipboard.writeText(cloudinaryVideoUrl);
-        alert('Video link copied to clipboard! You can now paste it anywhere.');
+        const socialUrl =
+          buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+        await navigator.clipboard.writeText(socialUrl);
+        alert("Video link copied to clipboard! You can now paste it anywhere.");
       } catch (error) {
         // Fallback for older browsers
-        const textArea = document.createElement('textarea');
+        const textArea = document.createElement("textarea");
         textArea.value = cloudinaryVideoUrl;
         document.body.appendChild(textArea);
         textArea.select();
-        document.execCommand('copy');
+        document.execCommand("copy");
         document.body.removeChild(textArea);
-        alert('Video link copied to clipboard!');
+        alert("Video link copied to clipboard!");
       }
     }
   };
@@ -2387,46 +2830,46 @@ export default function Create() {
     setResult(null);
     setGenerationStep(0);
     setGenerationProgress(0);
-    
+
     // Track image generation start
-    if (typeof window !== 'undefined' && (window as any).fbq) {
-      (window as any).fbq('track', 'InitiateCheckout', {
-        content_name: 'Diwali Postcard Generation',
-        content_category: 'Image Generation',
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "InitiateCheckout", {
+        content_name: "Diwali Postcard Generation",
+        content_category: "Image Generation",
         value: 0,
-        currency: 'INR'
+        currency: "INR",
       });
     }
-    
+
     // Track with Google Tag Manager
-    if (typeof window !== 'undefined' && (window as any).dataLayer) {
+    if (typeof window !== "undefined" && (window as any).dataLayer) {
       (window as any).dataLayer.push({
-        event: 'image_generation_start',
-        content_name: 'Diwali Postcard Generation',
-        content_category: 'Image Generation',
+        event: "image_generation_start",
+        content_name: "Diwali Postcard Generation",
+        content_category: "Image Generation",
         value: 0,
-        currency: 'INR'
+        currency: "INR",
       });
     }
-    
+
     try {
       // Simulate progress through generation steps with slower animation
       for (let i = 0; i < GENERATION_STEPS.length; i++) {
         setGenerationStep(i);
         setIsFading(false);
-        
+
         // Calculate progress percentage with smoother increments
         const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70; // 70% for steps, 30% for API call
         setGenerationProgress(stepProgress);
-        
+
         // Add delay between steps for better UX (slower)
-        await new Promise(resolve => setTimeout(resolve, 2000));
-        
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+
         // Fade out current step
         setIsFading(true);
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise((resolve) => setTimeout(resolve, 500));
       }
-      
+
       // Animate progress from 70% to 90% over 1.5 seconds
       const animateTo90 = () => {
         return new Promise<void>((resolve) => {
@@ -2443,19 +2886,24 @@ export default function Create() {
           }, 50); // 50ms intervals for smooth animation
         });
       };
-      
+
       await animateTo90();
-      
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ personImageBase64: photoData, dishImageUrl: selectedDish.image, background: bg, greeting }),
+        body: JSON.stringify({
+          personImageBase64: photoData,
+          dishImageUrl: selectedDish.image,
+          background: bg,
+          greeting,
+        }),
       });
       if (!res.ok) {
         throw new Error(`HTTP ${res.status}`);
       }
       const json = await res.json();
-      
+
       // Animate progress from 90% to 100% over 1.5 seconds
       const animateTo100 = () => {
         return new Promise<void>((resolve) => {
@@ -2472,37 +2920,40 @@ export default function Create() {
           }, 50); // 50ms intervals for smooth animation
         });
       };
-      
+
       await animateTo100();
-      
+
       // Small delay to ensure progress bar animation completes
-      await new Promise(resolve => setTimeout(resolve, 500));
-      
+      await new Promise((resolve) => setTimeout(resolve, 500));
+
       setResult(json?.image_url ?? json?.result_url ?? null);
       setResultData(json);
-      
+
       // Track successful image generation
-      if (typeof window !== 'undefined' && (window as any).fbq) {
-        (window as any).fbq('track', 'Purchase', {
-          content_name: 'Diwali Postcard Image',
-          content_category: 'Image Generation',
+      if (typeof window !== "undefined" && (window as any).fbq) {
+        (window as any).fbq("track", "Purchase", {
+          content_name: "Diwali Postcard Image",
+          content_category: "Image Generation",
           value: 1,
-          currency: 'INR'
+          currency: "INR",
         });
       }
-      
+
       // Track with Google Tag Manager
-      if (typeof window !== 'undefined' && (window as any).dataLayer) {
+      if (typeof window !== "undefined" && (window as any).dataLayer) {
         (window as any).dataLayer.push({
-          event: 'image_generation_complete',
-          content_name: 'Diwali Postcard Image',
-          content_category: 'Image Generation',
+          event: "image_generation_complete",
+          content_name: "Diwali Postcard Image",
+          content_category: "Image Generation",
           value: 1,
-          currency: 'INR'
+          currency: "INR",
         });
       }
     } catch (e: any) {
-      alert(e?.message || "Failed to generate. Configure FAL_KEY in env and try again.");
+      alert(
+        e?.message ||
+          "Failed to generate. Configure FAL_KEY in env and try again.",
+      );
     } finally {
       setLoading(false);
     }
@@ -2528,7 +2979,8 @@ export default function Create() {
           <div className="text-6xl mb-4">🚨</div>
           <h1 className="text-2xl font-bold text-red-700 mb-4">Page Crashed</h1>
           <p className="text-red-600 mb-6">
-            An unexpected error occurred during video generation. This might be due to memory issues or browser limitations.
+            An unexpected error occurred during video generation. This might be
+            due to memory issues or browser limitations.
           </p>
           <div className="space-y-3">
             <Button
@@ -2556,7 +3008,7 @@ export default function Create() {
               🔄 Refresh Page
             </Button>
             <Button
-              onClick={() => navigate('/')}
+              onClick={() => navigate("/")}
               className="w-full bg-orange-500 hover:bg-orange-600 text-white"
             >
               🏠 Go Home
@@ -2564,7 +3016,8 @@ export default function Create() {
           </div>
           <div className="mt-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
             <p className="text-sm text-yellow-700">
-              <strong>Tip:</strong> Try closing other browser tabs to free up memory, or use a different browser.
+              <strong>Tip:</strong> Try closing other browser tabs to free up
+              memory, or use a different browser.
             </p>
           </div>
         </div>
@@ -2576,123 +3029,244 @@ export default function Create() {
     <div className="min-h-screen">
       <div className="w-[90%] md:w-[80%] mx-auto px-2 md:px-6 py-8 pb-24">
         <div className="flex items-center justify-between">
-          <a href="/" className="font-extrabold text-orange-700 text-2xl"><img src="/fortune-logo.png" alt="logo" className="w-1/2 w-[100px] h-auto md:w-[217px] md:h-[73px]" /></a>
+          <a href="/" className="font-extrabold text-orange-700 text-2xl">
+            <img
+              src="/fortune-logo.png"
+              alt="logo"
+              className="w-1/2 w-[100px] h-auto md:w-[217px] md:h-[73px]"
+            />
+          </a>
           <div className="flex items-center gap-4">
-            
-            <div className="text-sm text-orange-900/70"><img src="/home-diwali-logo.png" alt="diwali-postcard" className="mx-auto w-[100px] h-auto md:w-[200px] md:h-[136px]" /></div>
+            <div className="text-sm text-orange-900/70">
+              <img
+                src="/home-diwali-logo.png"
+                alt="diwali-postcard"
+                className="mx-auto w-[100px] h-auto md:w-[200px] md:h-[136px]"
+              />
+            </div>
           </div>
         </div>
 
         <div className="mt-8">
-          <h2 className="text-center text-3xl md:text-4xl font-extrabold text-orange-900">Let&#8217;s create your festive postcard</h2>
-          <div className="mt-6"><Stepper step={step} /></div>
+          <h2 className="text-center text-3xl md:text-4xl font-extrabold text-orange-900">
+            Let&#8217;s create your festive postcard
+          </h2>
+          <div className="mt-6">
+            <Stepper step={step} />
+          </div>
         </div>
 
         <div className="w-[100%] md:w-[70%] mx-auto mt-8 bg-[#fff1d2] border border-orange-200 rounded-2xl p-6 md:p-8 shadow-xl">
-          {step===0 && (
+          {step === 0 && (
             <div className="flex flex-col gap-6 items-center text-center">
               <div className="w-full">
-                <div className="text-xl font-extrabold text-orange-900 mb-2">Upload my picture</div>
-                <p className="text-orange-900/70 mb-4">Use a clear selfie or portrait.</p>
+                <div className="text-xl font-extrabold text-orange-900 mb-2">
+                  Upload my picture
+                </div>
+                <p className="text-orange-900/70 mb-4">
+                  Use a clear selfie or portrait.
+                </p>
                 <div className="rounded-xl border-2 border-dashed border-orange-300  p-6 flex flex-col items-center justify-center text-center">
                   {photoData ? (
-                    <img src={photoData} alt="preview" className="max-h-72 rounded-md shadow" />
+                    <img
+                      src={photoData}
+                      alt="preview"
+                      className="max-h-72 rounded-md shadow"
+                    />
                   ) : (
                     <>
                       <p className="text-orange-800/80">Click to upload</p>
                       <p className="text-xs text-orange-900/60">PNG or JPG</p>
                     </>
                   )}
-                  <input ref={fileRef} type="file" accept="image/*" className="hidden" onChange={(e)=>handleFile(e.target.files?.[0]||undefined)} />
-                  <Button type="button" className="mt-4 bg-orange-600 hover:bg-orange-700" onClick={()=>{setUploadError(null); fileRef.current?.click();}}>Choose File</Button>
+                  <input
+                    ref={fileRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) =>
+                      handleFile(e.target.files?.[0] || undefined)
+                    }
+                  />
+                  <Button
+                    type="button"
+                    className="mt-4 bg-orange-600 hover:bg-orange-700"
+                    onClick={() => {
+                      setUploadError(null);
+                      fileRef.current?.click();
+                    }}
+                  >
+                    Choose File
+                  </Button>
                 </div>
                 {/* Optimization status */}
                 {isOptimizing && (
                   <div className="mt-4 p-3 bg-blue-100 border border-blue-300 rounded-lg">
                     <div className="flex items-center space-x-2">
                       <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600"></div>
-                      <p className="text-blue-700 text-sm font-medium">Optimizing image with TinyPNG...</p>
+                      <p className="text-blue-700 text-sm font-medium">
+                        Optimizing image with TinyPNG...
+                      </p>
                     </div>
                   </div>
                 )}
-                
+
                 {/* Optimization result */}
                 {optimizationResult && (
                   <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
                     <div className="flex items-center space-x-2 mb-2">
                       <div className="w-4 h-4 bg-green-500 rounded-full flex items-center justify-center">
-                        <svg className="w-2 h-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                          <path fillRule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clipRule="evenodd" />
+                        <svg
+                          className="w-2 h-2 text-white"
+                          fill="currentColor"
+                          viewBox="0 0 20 20"
+                        >
+                          <path
+                            fillRule="evenodd"
+                            d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                            clipRule="evenodd"
+                          />
                         </svg>
                       </div>
-                      <p className="text-green-700 text-sm font-medium">Image optimized successfully!</p>
+                      <p className="text-green-700 text-sm font-medium">
+                        Image optimized successfully!
+                      </p>
                     </div>
                     <div className="text-xs text-green-600 space-y-1">
-                      <p>Original: {(optimizationResult.originalSize / (1024 * 1024)).toFixed(2)} MB</p>
-                      <p>Optimized: {(optimizationResult.optimizedSize / (1024 * 1024)).toFixed(2)} MB</p>
-                      <p className="font-semibold">Saved: {optimizationResult.compressionRatio.toFixed(1)}%</p>
+                      <p>
+                        Original:{" "}
+                        {(
+                          optimizationResult.originalSize /
+                          (1024 * 1024)
+                        ).toFixed(2)}{" "}
+                        MB
+                      </p>
+                      <p>
+                        Optimized:{" "}
+                        {(
+                          optimizationResult.optimizedSize /
+                          (1024 * 1024)
+                        ).toFixed(2)}{" "}
+                        MB
+                      </p>
+                      <p className="font-semibold">
+                        Saved: {optimizationResult.compressionRatio.toFixed(1)}%
+                      </p>
                     </div>
                   </div>
                 )}
-                
+
                 {/* Error message display */}
                 {uploadError && (
                   <div className="mt-4 p-3 bg-red-100 border border-red-300 rounded-lg">
-                    <p className="text-red-700 text-sm font-medium">{uploadError}</p>
+                    <p className="text-red-700 text-sm font-medium">
+                      {uploadError}
+                    </p>
                   </div>
                 )}
                 {/* File size info */}
-                <p className="text-xs text-orange-900/60 mt-2">Maximum file size: 10MB (will be optimized automatically)</p>
+                <p className="text-xs text-orange-900/60 mt-2">
+                  Maximum file size: 10MB (will be optimized automatically)
+                </p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-                <Button disabled={true} className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(step - 1)}>← Previous</Button>
-                <Button disabled={!photoData} className="flex-1 h-12 bg-orange-600 hover:bg-orange-700" onClick={()=>setStep(1)}>Next →</Button>
+                <Button
+                  disabled={true}
+                  className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white"
+                  onClick={() => setStep(step - 1)}
+                >
+                  �� Previous
+                </Button>
+                <Button
+                  disabled={!photoData}
+                  className="flex-1 h-12 bg-orange-600 hover:bg-orange-700"
+                  onClick={() => setStep(1)}
+                >
+                  Next →
+                </Button>
               </div>
             </div>
           )}
 
-          {step===1 && (
+          {step === 1 && (
             <div>
-              <div className="text-lg font-semibold text-orange-900 mb-4">Choose your favourite dish</div>
+              <div className="text-lg font-semibold text-orange-900 mb-4">
+                Choose your favourite dish
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                {DISHES.map(d => (
-                  <button key={d.id} onClick={()=>setSelectedDish(d)} className={cn("group overflow-hidden rounded-xl border p-2 bg-white/70 hover:shadow transition", selectedDish?.id===d.id?"border-orange-500 ring-2 ring-orange-400":"border-orange-200")}> 
-                    <img src={d.image} alt={d.name} className="aspect-square w-full object-cover rounded-md" />
-                    <div className="mt-2 text-center text-sm font-medium text-orange-900">{d.name}</div>
+                {DISHES.map((d) => (
+                  <button
+                    key={d.id}
+                    onClick={() => setSelectedDish(d)}
+                    className={cn(
+                      "group overflow-hidden rounded-xl border p-2 bg-white/70 hover:shadow transition",
+                      selectedDish?.id === d.id
+                        ? "border-orange-500 ring-2 ring-orange-400"
+                        : "border-orange-200",
+                    )}
+                  >
+                    <img
+                      src={d.image}
+                      alt={d.name}
+                      className="aspect-square w-full object-cover rounded-md"
+                    />
+                    <div className="mt-2 text-center text-sm font-medium text-orange-900">
+                      {d.name}
+                    </div>
                   </button>
                 ))}
               </div>
               <div className="mt-6 flex justify-center gap-2">
-                <Button className="h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(0)}>← Previous</Button>
-                <Button disabled={!selectedDish} className="h-12 bg-orange-600 hover:bg-orange-700" onClick={()=>setStep(2)}>Next →</Button>
+                <Button
+                  className="h-12 bg-gray-500 hover:bg-gray-600 text-white"
+                  onClick={() => setStep(0)}
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  disabled={!selectedDish}
+                  className="h-12 bg-orange-600 hover:bg-orange-700"
+                  onClick={() => setStep(2)}
+                >
+                  Next →
+                </Button>
               </div>
             </div>
           )}
 
-          {step===2 && (
+          {step === 2 && (
             <div>
-              <div className="text-lg font-semibold text-orange-900 mb-4">Choose your festive background</div>
+              <div className="text-lg font-semibold text-orange-900 mb-4">
+                Choose your festive background
+              </div>
               <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-4">
-                {BACKGROUNDS.map(b => (
-                  <button 
-                    key={b.id} 
-                    onClick={()=>{
+                {BACKGROUNDS.map((b) => (
+                  <button
+                    key={b.id}
+                    onClick={() => {
                       setBg(b.id);
                       // Try to play video on click
                       const video = videoRefs.current[b.id];
                       if (video) {
                         video.play().catch(() => {
-                          console.log(`Could not play video on click: ${b.video}`);
+                          console.log(
+                            `Could not play video on click: ${b.video}`,
+                          );
                         });
                       }
-                    }} 
-                    className={cn("group overflow-hidden rounded-xl border h-28 relative bg-gradient-to-br from-orange-100 to-amber-200", bg===b.id?"ring-2 ring-orange-500 border-orange-500":"border-orange-200")}
-                  > 
-                    <video 
+                    }}
+                    className={cn(
+                      "group overflow-hidden rounded-xl border h-28 relative bg-gradient-to-br from-orange-100 to-amber-200",
+                      bg === b.id
+                        ? "ring-2 ring-orange-500 border-orange-500"
+                        : "border-orange-200",
+                    )}
+                  >
+                    <video
                       ref={(el) => {
                         videoRefs.current[b.id] = el;
                       }}
-                      src={b.video} 
+                      src={b.video}
                       className="w-full h-full object-cover"
                       muted
                       loop
@@ -2701,24 +3275,24 @@ export default function Create() {
                       preload="metadata"
                       onLoadStart={() => {
                         console.log(`Loading video: ${b.video}`);
-                        setVideoLoading(prev => ({...prev, [b.id]: true}));
+                        setVideoLoading((prev) => ({ ...prev, [b.id]: true }));
                       }}
                       onLoadedData={() => {
                         console.log(`Video data loaded: ${b.video}`);
-                        setVideoLoading(prev => ({...prev, [b.id]: false}));
-                        setVideoError(prev => ({...prev, [b.id]: false}));
+                        setVideoLoading((prev) => ({ ...prev, [b.id]: false }));
+                        setVideoError((prev) => ({ ...prev, [b.id]: false }));
                       }}
                       onCanPlay={() => {
                         console.log(`Video can play: ${b.video}`);
-                        setVideoError(prev => ({...prev, [b.id]: false}));
+                        setVideoError((prev) => ({ ...prev, [b.id]: false }));
                       }}
                       onPlay={() => {
                         console.log(`Video playing: ${b.video}`);
                       }}
                       onError={(e) => {
                         console.error(`Video error for ${b.video}:`, e);
-                        setVideoLoading(prev => ({...prev, [b.id]: false}));
-                        setVideoError(prev => ({...prev, [b.id]: true}));
+                        setVideoLoading((prev) => ({ ...prev, [b.id]: false }));
+                        setVideoError((prev) => ({ ...prev, [b.id]: true }));
                       }}
                     />
                     {/* Loading indicator */}
@@ -2736,7 +3310,7 @@ export default function Create() {
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2">
                       <span className="text-xs font-medium">{b.name}</span>
                     </div>
-                    {bg===b.id && (
+                    {bg === b.id && (
                       <div className="absolute top-2 right-2 w-4 h-4 bg-orange-500 rounded-full flex items-center justify-center">
                         <div className="w-2 h-2 bg-white rounded-full"></div>
                       </div>
@@ -2745,47 +3319,15 @@ export default function Create() {
                 ))}
               </div>
               <div className="mt-6 flex justify-center gap-2">
-                <Button className="h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(1)}>← Previous</Button>
-                <Button className="h-12 bg-orange-600 hover:bg-orange-700" onClick={()=>setStep(3)}>Next →</Button>
-              </div>
-            </div>
-          )}
-
-          {step===3 && (
-            <div className="flex flex-col justify-center gap-6 items-center">
-            
-              <div className="w-full flex flex-col md:flex-row align-start  gap-3">
-                <div className="text-xs text-orange-900/70 w-full md:w-1/2 min-h-[100%] flex flex-col justify-between">
-                <div className="text-lg font-semibold text-orange-900 mb-2 text-center md:text-left">Add your greeting *</div>
-                <Textarea 
-                  value={greeting} 
-                  onChange={e=>setGreeting(e.target.value)} 
-                  placeholder="Type your greeting here (max 75 characters)" 
-                  className="h-[80%] bg-white/70 resize-none" 
-                  maxLength={75}
-                />
-                <div className="text-xs text-orange-900/60 mt-1">
-                  {greeting.length}/75 characters
-                </div>
-                {!greeting.trim() && (
-                  <div className="text-xs text-red-600 mt-1">
-                    * Greeting is required to continue
-                  </div>
-                )}
-                </div>
-                <div className="grid gap-3 w-full md:w-1/2">
-                <div className="text-lg font-semibold text-orange-900 mb-2 text-center md:text-left">Or select one of the below</div>
-                  {PRESET_GREETINGS.map((g,i)=> (
-                    <button key={i} onClick={()=>setGreeting(g)} className="rounded-md border border-orange-200 bg-white/70 px-3 py-2 text-sm hover:border-orange-400">{g}</button>
-                  ))}
-                </div>
-              </div>
-              <div className="w-full md:w-48 flex gap-2">
-                <Button className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(2)}>← Previous</Button>
-                <Button 
-                  disabled={!greeting.trim()} 
-                  className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed" 
-                  onClick={()=>setStep(4)}
+                <Button
+                  className="h-12 bg-gray-500 hover:bg-gray-600 text-white"
+                  onClick={() => setStep(1)}
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  className="h-12 bg-orange-600 hover:bg-orange-700"
+                  onClick={() => setStep(3)}
                 >
                   Next →
                 </Button>
@@ -2793,67 +3335,144 @@ export default function Create() {
             </div>
           )}
 
-          {step===4 && !result && (
-            <div className="space-y-6">
-              <label className="flex items-start gap-3 text-orange-900">
-                <input type="checkbox" className="mt-1 h-4 w-4" checked={consent} onChange={(e)=>setConsent(e.target.checked)} />
-                <span>I consent to the use of the uploaded image for generating the AI visual.</span>
-              </label>
-              <div className="flex gap-2 flex-col md:flex-row">
-                <Button className="bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(3)}>← Previous</Button>
-                <Button disabled={!consent || !photoData || !selectedDish || loading} onClick={generate} className="bg-orange-600 hover:bg-orange-700 flex-1">
-                  {loading?"Generating...":"Generate my Postcard"}
+          {step === 3 && (
+            <div className="flex flex-col justify-center gap-6 items-center">
+              <div className="w-full flex flex-col md:flex-row align-start  gap-3">
+                <div className="text-xs text-orange-900/70 w-full md:w-1/2 min-h-[100%] flex flex-col justify-between">
+                  <div className="text-lg font-semibold text-orange-900 mb-2 text-center md:text-left">
+                    Add your greeting *
+                  </div>
+                  <Textarea
+                    value={greeting}
+                    onChange={(e) => setGreeting(e.target.value)}
+                    placeholder="Type your greeting here (max 75 characters)"
+                    className="h-[80%] bg-white/70 resize-none"
+                    maxLength={75}
+                  />
+                  <div className="text-xs text-orange-900/60 mt-1">
+                    {greeting.length}/75 characters
+                  </div>
+                  {!greeting.trim() && (
+                    <div className="text-xs text-red-600 mt-1">
+                      * Greeting is required to continue
+                    </div>
+                  )}
+                </div>
+                <div className="grid gap-3 w-full md:w-1/2">
+                  <div className="text-lg font-semibold text-orange-900 mb-2 text-center md:text-left">
+                    Or select one of the below
+                  </div>
+                  {PRESET_GREETINGS.map((g, i) => (
+                    <button
+                      key={i}
+                      onClick={() => setGreeting(g)}
+                      className="rounded-md border border-orange-200 bg-white/70 px-3 py-2 text-sm hover:border-orange-400"
+                    >
+                      {g}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div className="w-full md:w-48 flex gap-2">
+                <Button
+                  className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white"
+                  onClick={() => setStep(2)}
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  disabled={!greeting.trim()}
+                  className="flex-1 h-12 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-400 disabled:cursor-not-allowed"
+                  onClick={() => setStep(4)}
+                >
+                  Next →
                 </Button>
               </div>
-              
+            </div>
+          )}
+
+          {step === 4 && !result && (
+            <div className="space-y-6">
+              <label className="flex items-start gap-3 text-orange-900">
+                <input
+                  type="checkbox"
+                  className="mt-1 h-4 w-4"
+                  checked={consent}
+                  onChange={(e) => setConsent(e.target.checked)}
+                />
+                <span>
+                  I consent to the use of the uploaded image for generating the
+                  AI visual.
+                </span>
+              </label>
+              <div className="flex gap-2 flex-col md:flex-row">
+                <Button
+                  className="bg-gray-500 hover:bg-gray-600 text-white"
+                  onClick={() => setStep(3)}
+                >
+                  ← Previous
+                </Button>
+                <Button
+                  disabled={!consent || !photoData || !selectedDish || loading}
+                  onClick={generate}
+                  className="bg-orange-600 hover:bg-orange-700 flex-1"
+                >
+                  {loading ? "Generating..." : "Generate my Postcard"}
+                </Button>
+              </div>
+
               {/* Generation Progress Display */}
               {loading && (
                 <div className="mt-8 bg-white/90 backdrop-blur border border-orange-200 rounded-2xl p-6 shadow-xl">
                   <div className="text-center">
-                    <div className="text-lg font-semibold text-orange-900 mb-4">Creating Your Festive Postcard</div>
-                    
+                    <div className="text-lg font-semibold text-orange-900 mb-4">
+                      Creating Your Festive Postcard
+                    </div>
+
                     {/* Scrolling Text Display */}
                     <div className="relative h-[140px] overflow-hidden bg-gradient-to-r from-orange-50 to-amber-50 rounded-xl border border-orange-200">
                       <div className="absolute inset-0 flex items-center justify-center">
-                        <div 
+                        <div
                           className={`text-orange-800 font-medium text-lg transition-all duration-1200 ease-in-out ${
-                            isFading 
-                              ? 'opacity-0 transform scale-95' 
-                              : 'opacity-100 transform scale-100'
+                            isFading
+                              ? "opacity-0 transform scale-95"
+                              : "opacity-100 transform scale-100"
                           }`}
                         >
                           {GENERATION_STEPS[generationStep]}
                         </div>
                       </div>
                     </div>
-                    
+
                     {/* Progress Dots */}
                     <div className="flex justify-center mt-4 space-x-2">
                       {GENERATION_STEPS.map((_, index) => (
                         <div
                           key={index}
                           className={`w-2 h-2 rounded-full transition-all duration-1200 ease-in-out ${
-                            index === generationStep 
-                              ? 'bg-orange-500 scale-125' 
-                              : 'bg-orange-200 scale-100'
+                            index === generationStep
+                              ? "bg-orange-500 scale-125"
+                              : "bg-orange-200 scale-100"
                           }`}
                         />
                       ))}
                     </div>
-                    
+
                     {/* Circular Progress Bar */}
                     <div className="mt-6 flex justify-center">
-                      <CircularProgressBar 
-                        percentage={generationProgress} 
-                        size={100} 
-                        strokeWidth={8} 
+                      <CircularProgressBar
+                        percentage={generationProgress}
+                        size={100}
+                        strokeWidth={8}
                         color="#f97316"
                       />
                     </div>
-                    
+
                     {/* Progress Text */}
                     <div className="mt-3 text-sm text-orange-700 font-medium">
-                      {generationProgress < 100 ? `Processing... ${Math.round(generationProgress)}%` : 'Complete!'}
+                      {generationProgress < 100
+                        ? `Processing... ${Math.round(generationProgress)}%`
+                        : "Complete!"}
                     </div>
                   </div>
                 </div>
@@ -2861,15 +3480,23 @@ export default function Create() {
             </div>
           )}
 
-          {(result && step === 4) && (
-            <div className="mt-2" style={{ zIndex: 1000, position: 'relative' }}>
-              <div className="text-xl font-semibold text-orange-900 mb-4 text-center">Your festive postcard is ready!</div>
+          {result && step === 4 && (
+            <div
+              className="mt-2"
+              style={{ zIndex: 1000, position: "relative" }}
+            >
+              <div className="text-xl font-semibold text-orange-900 mb-4 text-center">
+                Your festive postcard is ready!
+              </div>
               <div className="flex justify-center generated-card-container">
-                <div className="relative max-w-sm sm:max-w-md lg:max-w-lg" style={{ zIndex: 1000 }}>
+                <div
+                  className="relative max-w-sm sm:max-w-md lg:max-w-lg"
+                  style={{ zIndex: 1000 }}
+                >
                   {/* Photo Frame Container */}
-                  <img 
-                    src="/photo-frame-story.png" 
-                    alt="photo frame" 
+                  <img
+                    src="/photo-frame-story.png"
+                    alt="photo frame"
                     className="w-full h-auto relative"
                     style={{ zIndex: 1000 }}
                   />
@@ -2877,8 +3504,11 @@ export default function Create() {
                   <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-8">
                     <div className="relative w-full h-full">
                       {/* Video Background */}
-                      <video 
-                        src={resultData?.background_video || selectedBackground.video} 
+                      <video
+                        src={
+                          resultData?.background_video ||
+                          selectedBackground.video
+                        }
                         className="absolute inset-0 w-full h-full object-cover rounded-lg"
                         autoPlay
                         loop
@@ -2886,22 +3516,28 @@ export default function Create() {
                         playsInline
                       />
                       {/* Generated Image Overlay */}
-                      <div className="relative flex items-center justify-center h-full" style={{ zIndex: 99 }}>
-                        <img 
-                          src={result} 
-                          alt="result" 
+                      <div
+                        className="relative flex items-center justify-center h-full"
+                        style={{ zIndex: 99 }}
+                      >
+                        <img
+                          src={result}
+                          alt="result"
                           className="object-contain absolute md:top-[28%] top-[30%]"
-                          style={{ 
-                            background: 'transparent',
-                            mixBlendMode: 'normal'
+                          style={{
+                            background: "transparent",
+                            mixBlendMode: "normal",
                           }}
                         />
                       </div>
                       {/* Greeting Message Overlay */}
                       {greeting && (
-                        <div className="w-full absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center" style={{zIndex: 1002}}>
+                        <div
+                          className="w-full absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center"
+                          style={{ zIndex: 1002 }}
+                        >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-sm md:text-xl font-medium leading-tight">
+                            <p className="text-xl md:text-2xl font-semibold leading-tight">
                               {greeting}
                             </p>
                           </div>
@@ -2937,12 +3573,14 @@ export default function Create() {
                         </div>
                       </Button>
                     )}
-                    
+
                     {isRecording && (
                       <div className="text-sm text-orange-700">
                         <div className="flex items-center gap-2">
                           <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                          <span>Recording: {recordingProgress.toFixed(1)}s</span>
+                          <span>
+                            Recording: {recordingProgress.toFixed(1)}s
+                          </span>
                           {recordingProgress < 2 && (
                             <span className="text-xs text-orange-600">
                               (Min: 2s)
@@ -2952,21 +3590,41 @@ export default function Create() {
                       </div>
                     )}
                   </div>
-                  
+
                   <div className="text-xs text-gray-500 mt-2">
-                    <p>Click "Start Recording" to begin, then "Stop Recording" when finished</p>
-                    <p>Like the <a href="https://dmnsgn.github.io/canvas-record/" target="_blank" rel="noopener noreferrer" className="text-orange-600 hover:underline">canvas-record demo</a></p>
+                    <p>
+                      Click "Start Recording" to begin, then "Stop Recording"
+                      when finished
+                    </p>
+                    <p>
+                      Like the{" "}
+                      <a
+                        href="https://dmnsgn.github.io/canvas-record/"
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-orange-600 hover:underline"
+                      >
+                        canvas-record demo
+                      </a>
+                    </p>
                     <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-700">
                       <p className="font-medium">⏱️ Recording Tips</p>
-                      <p className="text-xs">• Record for at least 2 seconds for best results</p>
-                      <p className="text-xs">• Longer recordings create smoother videos</p>
+                      <p className="text-xs">
+                        • Record for at least 2 seconds for best results
+                      </p>
+                      <p className="text-xs">
+                        • Longer recordings create smoother videos
+                      </p>
                     </div>
                     <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700">
                       <p className="font-medium">📱 Maximum Compatibility</p>
-                      <p className="text-xs">Videos are optimized for maximum compatibility (512x512, 15fps, H.264 Baseline)</p>
+                      <p className="text-xs">
+                        Videos are optimized for maximum compatibility (512x512,
+                        15fps, H.264 Baseline)
+                      </p>
                     </div>
                   </div>
-                  
+
                   {/* Video Generation Error */}
                   {videoGenerationError && (
                     <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
@@ -2974,7 +3632,9 @@ export default function Create() {
                         <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
                           <span className="text-white text-xs">!</span>
                         </div>
-                        <span className="font-medium">Video Generation Issue</span>
+                        <span className="font-medium">
+                          Video Generation Issue
+                        </span>
                       </div>
                       <p className="text-sm mt-1">{videoGenerationError}</p>
                       <button
@@ -3001,7 +3661,9 @@ export default function Create() {
                         <span className="text-sm">
                           {memoryUsage.toFixed(1)} MB
                           {memoryUsage > 100 && (
-                            <span className="ml-2 text-orange-600">⚠️ High</span>
+                            <span className="ml-2 text-orange-600">
+                              ⚠️ High
+                            </span>
                           )}
                         </span>
                       </div>
@@ -3014,8 +3676,16 @@ export default function Create() {
               {cloudinaryVideoUrl && (
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 rounded-lg mb-2">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Video ready! Click "Open Video" to view in new tab.
                   </div>
@@ -3023,27 +3693,28 @@ export default function Create() {
                     <strong>Cloudinary URL:</strong> {cloudinaryVideoUrl}
                   </div>
                   <Button
-                    onClick={() => {
-                      navigator.clipboard.writeText(cloudinaryVideoUrl);
-                      alert('Video URL copied to clipboard!');
-                    }}
+                    onClick={copyVideoLink}
                     className="h-8 px-4 bg-blue-500 hover:bg-blue-600 text-white text-sm"
                   >
-                    📋 Copy Video URL
+                    Copy Video URL
                   </Button>
-                  
+
                   {/* Mobile-optimized video preview */}
                   {isMobile && recordedVideoUrl && (
                     <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
-                      <p className="text-sm text-blue-700 font-medium mb-2">📱 Mobile Preview</p>
+                      <p className="text-sm text-blue-700 font-medium mb-2">
+                        📱 Mobile Preview
+                      </p>
                       <video
                         controls
                         playsInline
                         muted
                         className="w-full max-w-xs mx-auto rounded-lg"
                         onError={(e) => {
-                          console.error('Video playback error:', e);
-                          setVideoGenerationError('Video playback failed on mobile. Try downloading instead.');
+                          console.error("Video playback error:", e);
+                          setVideoGenerationError(
+                            "Video playback failed on mobile. Try downloading instead.",
+                          );
                         }}
                       >
                         <source src={recordedVideoUrl} type="video/mp4" />
@@ -3056,8 +3727,6 @@ export default function Create() {
                   )}
                 </div>
               )}
-
-             
 
               {/* Upload Progress Indicator */}
               {downloading && (
@@ -3080,71 +3749,110 @@ export default function Create() {
                   </div>
                 </div>
               )}
-              
+
               {cloudinaryVideoUrl && (
                 <div className="text-center mb-4">
                   <div className="inline-flex items-center px-4 py-2 bg-green-50 text-green-700 rounded-lg mb-4">
-                    <svg className="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    <svg
+                      className="w-4 h-4 mr-2"
+                      fill="currentColor"
+                      viewBox="0 0 20 20"
+                    >
+                      <path
+                        fillRule="evenodd"
+                        d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
+                        clipRule="evenodd"
+                      />
                     </svg>
                     Video ready for sharing!
                   </div>
-                  
+
                   {/* Mobile-optimized video preview */}
                   <div className="mb-4">
-                    <video 
-                      controls 
+                    <video
+                      controls
                       playsInline
                       preload="metadata"
                       className="w-full max-w-md mx-auto rounded-lg shadow-lg"
-                      style={{ maxHeight: '300px' }}
+                      style={{ maxHeight: "300px" }}
                     >
                       <source src={recordedVideoUrl} type="video/mp4" />
                       Your browser does not support the video tag.
                     </video>
                     <p className="text-sm text-gray-600 mt-2">
-                      Preview your video above. If it doesn't play, try downloading it.
+                      Preview your video above. If it doesn't play, try
+                      downloading it.
                     </p>
                   </div>
                 </div>
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <Button 
-                  className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700" 
+                <Button
+                  className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
                   onClick={recordedVideoUrl ? downloadVideo : startRecording}
                   disabled={isRecording || downloading}
                 >
-                  {isRecording ? "Recording..." : 
-                   downloading ? "Uploading to Cloudinary..." : 
-                   recordedVideoUrl ? "Open Video" : 
-                   "Start Recording"}
+                  {isRecording
+                    ? "Recording..."
+                    : downloading
+                      ? "Uploading to Cloudinary..."
+                      : recordedVideoUrl
+                        ? "Open Video"
+                        : "Start Recording"}
                 </Button>
-                <Button 
-                  className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700" 
-                  onClick={() => {
+                <Button
+                  className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
+                  onClick={async () => {
                     const shareUrl = cloudinaryVideoUrl || result;
-                    const shareText = cloudinaryVideoUrl 
-                      ? "Check out my festive Diwali postcard video!" 
+                    const shareText = cloudinaryVideoUrl
+                      ? "Check out my festive Diwali postcard video!"
                       : "My festive postcard";
-                    
-                    if (navigator.share) {
-                      navigator.share({
-                        url: shareUrl,
-                        text: shareText,
-                        title: "Diwali Postcard"
-                      });
+
+                    if (!shareUrl) {
+                      // Nothing to share
+                      try {
+                        navigator.clipboard.writeText(window.location.href);
+                      } catch (e) {}
+                      return;
+                    }
+
+                    if (
+                      navigator.share &&
+                      typeof navigator.share === "function"
+                    ) {
+                      try {
+                        await navigator.share({
+                          url: shareUrl,
+                          text: shareText,
+                          title: "Diwali Postcard",
+                        });
+                      } catch (err) {
+                        // Permission denied or user cancelled - fallback to opening link
+                        console.warn(
+                          "Navigator.share failed, falling back to open:",
+                          err,
+                        );
+                        window.open(shareUrl, "_blank");
+                      }
                     } else {
-                      window.open(shareUrl, '_blank');
+                      // Web Share API not available - open in new tab
+                      window.open(shareUrl, "_blank");
                     }
                   }}
                   disabled={videoUploading}
                 >
                   {videoUploading ? "Uploading..." : "Quick Share"}
                 </Button>
-                <Button 
-                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50" 
-                  onClick={()=>{setResult(null); setResultData(null); setStep(0); setRecordedVideoUrl(null); setCloudinaryVideoUrl(null);}}
+                <Button
+                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  onClick={() => {
+                    setResult(null);
+                    setResultData(null);
+                    setStep(0);
+                    setRecordedVideoUrl(null);
+                    setCloudinaryVideoUrl(null);
+                  }}
                 >
                   Generate again
                 </Button>
@@ -3156,7 +3864,7 @@ export default function Create() {
                   <h3 className="text-lg font-semibold text-orange-900 mb-4 text-center">
                     🎉 Share Your Diwali Postcard Video!
                   </h3>
-                  
+
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                     {/* Instagram */}
                     <Button
@@ -3238,60 +3946,58 @@ export default function Create() {
                   {/* Instructions */}
                   <div className="mt-4 text-center">
                     <p className="text-sm text-orange-700">
-                      💡 <strong>Tip:</strong> For Instagram and TikTok, download the video first, then upload it to the app!
+                      💡 <strong>Tip:</strong> For Instagram and TikTok,
+                      download the video first, then upload it to the app!
                     </p>
                   </div>
                 </div>
               )}
-              
-              
             </div>
           )}
         </div>
       </div>
-      
+
       {/* Hidden canvas for video recording */}
-      <canvas 
-        ref={canvasRef} 
-        style={{ display: 'none' }}
-        width={640} 
+      <canvas
+        ref={canvasRef}
+        style={{ display: "none" }}
+        width={640}
         height={480}
       />
 
       {/* Footer */}
       {showFooter && (
-        <footer className="fixed bottom-0 left-0 right-0 py-4 border-t border-orange-200 bg-orange-50/30 backdrop-blur-sm z-50" >
-        <div className="max-w-4xl mx-auto px-4 text-center">
-          <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-orange-900/70">
-            <p>Copyright &copy;2025. All rights reserved.</p>
-            <div className="flex items-center gap-4">
-              <Dialog>
-                <DialogTrigger asChild>
-                  <button className="text-orange-600 hover:text-orange-700 underline">
-                    Terms & Conditions
-                  </button>
-                </DialogTrigger>
-                <DialogContent 
-                  className="max-w-4xl max-h-[80vh] overflow-y-auto z-[999999]" 
-                  
-                  onOpenAutoFocus={(e) => e.preventDefault()}
-                >
-                  <DialogHeader>
-                    <DialogTitle className="text-xl font-bold text-orange-900">
+        <footer className="fixed bottom-0 left-0 right-0 py-4 border-t border-orange-200 bg-orange-50/30 backdrop-blur-sm z-50">
+          <div className="max-w-4xl mx-auto px-4 text-center">
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-4 text-sm text-orange-900/70">
+              <p>Copyright &copy;2025. All rights reserved.</p>
+              <div className="flex items-center gap-4">
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <button className="text-orange-600 hover:text-orange-700 underline">
                       Terms & Conditions
-                    </DialogTitle>
-                  </DialogHeader>
-                  <div className="mt-4">
-                    <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
-                      {TERMS_AND_CONDITIONS}
-                    </pre>
-                  </div>
-                </DialogContent>
-              </Dialog>
+                    </button>
+                  </DialogTrigger>
+                  <DialogContent
+                    className="max-w-4xl max-h-[80vh] overflow-y-auto z-[999999]"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
+                    <DialogHeader>
+                      <DialogTitle className="text-xl font-bold text-orange-900">
+                        Terms & Conditions
+                      </DialogTitle>
+                    </DialogHeader>
+                    <div className="mt-4">
+                      <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
+                        {TERMS_AND_CONDITIONS}
+                      </pre>
+                    </div>
+                  </DialogContent>
+                </Dialog>
+              </div>
             </div>
           </div>
-        </div>
-      </footer>
+        </footer>
       )}
     </div>
   );

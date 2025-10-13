@@ -8,7 +8,7 @@ import crypto from "crypto";
  * 1. FAL AI Product Holding: Places exact dish in person's hands
  * 2. FLUX Kontext: Transforms to digital illustration with Indian ethnic wear
  * 3. Cloudinary Background Removal: Creates transparent background
- * 
+ *
  * This creates a complete festive postcard with person holding dish,
  * cartoonish digital illustration style, and transparent background.
  */
@@ -18,7 +18,11 @@ const MODEL_URL = "https://fal.run/fal-ai/image-apps-v2/product-holding";
 const FLUX_KONTEXT_URL = "https://fal.run/fal-ai/flux-pro/kontext"; // Added for FLUX Kontext
 const PIXELBIN_API_URL = "https://api.pixelbin.io/v2/transform";
 
-async function uploadToFal(fileBuffer: Buffer, filename: string, apiKey: string) {
+async function uploadToFal(
+  fileBuffer: Buffer,
+  filename: string,
+  apiKey: string,
+) {
   const form = new FormData();
   const blob = new Blob([fileBuffer as any]);
   form.append("file", blob, filename);
@@ -44,15 +48,18 @@ function parseDataUrl(dataUrl: string) {
   return { buffer: Buffer.from(b64, "base64"), ext };
 }
 
-async function removeBackgroundWithClipdrop(imageBuffer: Buffer, apiKey: string) {
+async function removeBackgroundWithClipdrop(
+  imageBuffer: Buffer,
+  apiKey: string,
+) {
   console.log("Starting Clipdrop background removal...");
   console.log("Image buffer size:", imageBuffer.length, "bytes");
   console.log("API Key length:", apiKey.length);
-  
+
   const formData = new FormData();
   const blob = new Blob([imageBuffer as any]);
   formData.append("image_file", blob, "image.png");
-  
+
   console.log("Sending request to Clipdrop API...");
   const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
     method: "POST",
@@ -61,66 +68,85 @@ async function removeBackgroundWithClipdrop(imageBuffer: Buffer, apiKey: string)
     },
     body: formData as any,
   });
-  
+
   console.log("Clipdrop API response status:", response.status);
-  console.log("Clipdrop API response headers:", Object.fromEntries(response.headers.entries()));
-  
+  console.log(
+    "Clipdrop API response headers:",
+    Object.fromEntries(response.headers.entries()),
+  );
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error("Clipdrop API error response:", errorText);
-    throw new Error(`Clipdrop API failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `Clipdrop API failed: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
-  
+
   const result = await response.arrayBuffer();
-  console.log("Clipdrop background removal successful, result size:", result.byteLength, "bytes");
+  console.log(
+    "Clipdrop background removal successful, result size:",
+    result.byteLength,
+    "bytes",
+  );
   return result;
 }
 
-async function removeBackgroundWithCloudinary(imageUrl: string, cloudName: string, apiKey: string, apiSecret: string): Promise<string> {
+async function removeBackgroundWithCloudinary(
+  imageUrl: string,
+  cloudName: string,
+  apiKey: string,
+  apiSecret: string,
+): Promise<string> {
   console.log("Cloudinary: Starting background removal...");
   console.log("Cloudinary: Input image URL:", imageUrl);
-  
+
   // First, download the image
   const imageResponse = await fetch(imageUrl);
   if (!imageResponse.ok) {
     throw new Error(`Failed to download image: ${imageResponse.status}`);
   }
   const imageBuffer = await imageResponse.arrayBuffer();
-  
+
   // Generate signature for Cloudinary upload
   const timestamp = Math.round(new Date().getTime() / 1000).toString();
-  const transformation = 'e_background_removal';
+  const transformation = "e_background_removal";
   const message = `folder=diwali-postcards/background-removed&format=png&timestamp=${timestamp}&transformation=${transformation}${apiSecret}`;
-  
-  const hash = crypto.createHash('sha1').update(message).digest('hex');
-  
+
+  const hash = crypto.createHash("sha1").update(message).digest("hex");
+
   // Upload the image to Cloudinary with background removal
   const uploadUrl = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
   const formData = new FormData();
-  formData.append('file', new Blob([imageBuffer]), 'image.png');
-  formData.append('api_key', apiKey);
-  formData.append('timestamp', timestamp);
-  formData.append('signature', hash);
-  formData.append('folder', 'diwali-postcards/background-removed');
-  formData.append('transformation', transformation);
-  formData.append('format', 'png');
-  
+  formData.append("file", new Blob([imageBuffer]), "image.png");
+  formData.append("api_key", apiKey);
+  formData.append("timestamp", timestamp);
+  formData.append("signature", hash);
+  formData.append("folder", "diwali-postcards/background-removed");
+  formData.append("transformation", transformation);
+  formData.append("format", "png");
+
   console.log("Cloudinary: Uploading image with background removal...");
   const response = await fetch(uploadUrl, {
-    method: 'POST',
+    method: "POST",
     body: formData,
   });
-  
+
   console.log("Cloudinary: Upload response status:", response.status);
-  
+
   if (!response.ok) {
     const error = await response.text();
     console.error("Cloudinary: Error response:", error);
-    throw new Error(`Cloudinary background removal failed: ${response.status} - ${error}`);
+    throw new Error(
+      `Cloudinary background removal failed: ${response.status} - ${error}`,
+    );
   }
-  
+
   const result = await response.json();
-  console.log("Cloudinary: Background removal successful, result URL:", result.secure_url);
+  console.log(
+    "Cloudinary: Background removal successful, result URL:",
+    result.secure_url,
+  );
   return result.secure_url;
 }
 
@@ -133,22 +159,26 @@ async function downloadImageAsBuffer(imageUrl: string): Promise<Buffer> {
   return Buffer.from(arrayBuffer);
 }
 
-async function uploadToPixelBin(imageBuffer: Buffer, fileName: string): Promise<string> {
+async function uploadToPixelBin(
+  imageBuffer: Buffer,
+  fileName: string,
+): Promise<string> {
   const cloudName = process.env.PIXELBIN_CLOUD_NAME || "A-Nh2g";
-  const apiKey = process.env.PIXELBIN_API_KEY || "87140d43-d9fb-44e3-9fcb-964b84dd6520";
-  
+  const apiKey =
+    process.env.PIXELBIN_API_KEY || "87140d43-d9fb-44e3-9fcb-964b84dd6520";
+
   const formData = new FormData();
   const blob = new Blob([imageBuffer as any]);
   formData.append("file", blob, fileName);
-  
+
   const uploadUrl = `https://api.pixelbin.io/v2/upload`;
-  
+
   console.log("Uploading to PixelBin:", uploadUrl);
-  
+
   const response = await fetch(uploadUrl, {
     method: "POST",
     headers: {
-      "Authorization": `Bearer ${apiKey}`,
+      Authorization: `Bearer ${apiKey}`,
     },
     body: formData as any,
   });
@@ -156,12 +186,14 @@ async function uploadToPixelBin(imageBuffer: Buffer, fileName: string): Promise<
   if (!response.ok) {
     const errorText = await response.text();
     console.error("PixelBin upload error:", errorText);
-    throw new Error(`PixelBin upload failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `PixelBin upload failed: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
 
   const json = await response.json();
   console.log("PixelBin upload response:", JSON.stringify(json, null, 2));
-  
+
   if (json.url) {
     return json.url;
   } else if (json.data && json.data.url) {
@@ -171,12 +203,18 @@ async function uploadToPixelBin(imageBuffer: Buffer, fileName: string): Promise<
   }
 }
 
-async function applyFluxKontextTransformation(imageUrl: string, apiKey: string): Promise<string> {
-  console.log("Applying FLUX Kontext transformation for digital illustration style...");
+async function applyFluxKontextTransformation(
+  imageUrl: string,
+  apiKey: string,
+): Promise<string> {
+  console.log(
+    "Applying FLUX Kontext transformation for digital illustration style...",
+  );
   console.log("Input image URL for FLUX Kontext:", imageUrl);
-  
-  const prompt = "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Change dress to Indian ethnic wear. Keep the same background as the input image.";
-  
+
+  const prompt =
+    "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Change dress to Indian ethnic wear. Keep the same background as the input image.";
+
   const payload = {
     prompt: prompt,
     image_url: imageUrl,
@@ -184,29 +222,31 @@ async function applyFluxKontextTransformation(imageUrl: string, apiKey: string):
     num_inference_steps: 20,
     seed: Math.floor(Math.random() * 1000000),
   };
-  
+
   console.log("FLUX Kontext payload:", JSON.stringify(payload, null, 2));
-  
+
   const response = await fetch(FLUX_KONTEXT_URL, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": `Key ${apiKey}`,
+      Authorization: `Key ${apiKey}`,
     },
     body: JSON.stringify(payload),
   });
-  
+
   console.log("FLUX Kontext response status:", response.status);
-  
+
   if (!response.ok) {
     const errorText = await response.text();
     console.error("FLUX Kontext API error:", errorText);
-    throw new Error(`FLUX Kontext API failed: ${response.status} ${response.statusText} - ${errorText}`);
+    throw new Error(
+      `FLUX Kontext API failed: ${response.status} ${response.statusText} - ${errorText}`,
+    );
   }
-  
+
   const result = await response.json();
   console.log("FLUX Kontext response:", JSON.stringify(result, null, 2));
-  
+
   if (result.images && result.images.length > 0) {
     const imageUrl = result.images[0].url;
     console.log("FLUX Kontext transformation successful:", imageUrl);
@@ -218,49 +258,52 @@ async function applyFluxKontextTransformation(imageUrl: string, apiKey: string):
 
 async function applyPixelBinTransformation(imageUrl: string): Promise<string> {
   const cloudName = process.env.PIXELBIN_CLOUD_NAME || "A-Nh2g";
-  const cdnUrl = process.env.NEXT_PUBLIC_PIXELBIN_CDN || "https://cdn.pixelbin.io/v2";
-  
+  const cdnUrl =
+    process.env.NEXT_PUBLIC_PIXELBIN_CDN || "https://cdn.pixelbin.io/v2";
+
   try {
     // Download the image and upload to PixelBin
     console.log("Downloading image for PixelBin upload:", imageUrl);
     const imageBuffer = await downloadImageAsBuffer(imageUrl);
-    
+
     // Generate a unique filename
     const timestamp = Date.now();
     const fileName = `dishcraft-${timestamp}.png`;
-    
+
     // Upload to PixelBin
     const pixelbinUrl = await uploadToPixelBin(imageBuffer, fileName);
     console.log("Image uploaded to PixelBin:", pixelbinUrl);
-    
+
     // Extract the file path from PixelBin URL
-    const urlParts = pixelbinUrl.split('/');
-    const filePath = urlParts.slice(urlParts.indexOf(cloudName) + 1).join('/');
-    
+    const urlParts = pixelbinUrl.split("/");
+    const filePath = urlParts.slice(urlParts.indexOf(cloudName) + 1).join("/");
+
     // Apply artistic transformations for digital illustration style
     // Using multiple transformation parameters to achieve cartoonish character design
     const transformations = [
-      'f=cartoon',           // Cartoon filter
-      'hue=30',              // Warm hue (yellows/oranges)
-      'saturation=60',       // Enhanced saturation for Diwali colors
-      'brightness=10',       // Slight brightness increase
-      'contrast=25',         // Increased contrast for definition
-      'sepia=15',            // Warm sepia tone
-      'vibrance=40',         // Enhanced vibrance for colors
-      'gamma=1.1'            // Slight gamma adjustment
-    ].join('&');
-    
+      "f=cartoon", // Cartoon filter
+      "hue=30", // Warm hue (yellows/oranges)
+      "saturation=60", // Enhanced saturation for Diwali colors
+      "brightness=10", // Slight brightness increase
+      "contrast=25", // Increased contrast for definition
+      "sepia=15", // Warm sepia tone
+      "vibrance=40", // Enhanced vibrance for colors
+      "gamma=1.1", // Slight gamma adjustment
+    ].join("&");
+
     const transformedUrl = `${cdnUrl}/${cloudName}/${filePath}?${transformations}`;
-    
+
     console.log("PixelBin transformation URL:", transformedUrl);
-    
+
     // Test if the transformed URL is accessible
     const response = await fetch(transformedUrl, { method: "HEAD" });
     if (response.ok) {
       console.log("PixelBin transformation successful");
       return transformedUrl;
     } else {
-      console.warn("PixelBin transformation URL not accessible, using uploaded image");
+      console.warn(
+        "PixelBin transformation URL not accessible, using uploaded image",
+      );
       return pixelbinUrl;
     }
   } catch (error) {
@@ -296,7 +339,8 @@ async function uploadToCloudinaryFromBuffer(imageBuffer: Buffer) {
 
     const res = await fetch(url, { method: "POST", body: form as any });
     const json = await res.json();
-    if (!res.ok) throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
+    if (!res.ok)
+      throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
     return (json.secure_url || json.url) as string;
   }
 
@@ -306,7 +350,8 @@ async function uploadToCloudinaryFromBuffer(imageBuffer: Buffer) {
   form.append("upload_preset", unsignedPreset);
   const res = await fetch(url, { method: "POST", body: form as any });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
+  if (!res.ok)
+    throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
   return (json.secure_url || json.url) as string;
 }
 
@@ -336,7 +381,8 @@ async function uploadToCloudinaryFromDataUrl(dataUrl: string) {
 
     const res = await fetch(url, { method: "POST", body: form as any });
     const json = await res.json();
-    if (!res.ok) throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
+    if (!res.ok)
+      throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
     return (json.secure_url || json.url) as string;
   }
 
@@ -346,20 +392,30 @@ async function uploadToCloudinaryFromDataUrl(dataUrl: string) {
   form.append("upload_preset", unsignedPreset);
   const res = await fetch(url, { method: "POST", body: form as any });
   const json = await res.json();
-  if (!res.ok) throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
+  if (!res.ok)
+    throw new Error(json?.error?.message || `Cloudinary ${res.status}`);
   return (json.secure_url || json.url) as string;
 }
 
 async function pollUntilReady(url: string, apiKey: string, timeoutMs = 60000) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
-    const res = await fetch(url, { headers: { Authorization: `Key ${apiKey}` } });
+    const res = await fetch(url, {
+      headers: { Authorization: `Key ${apiKey}` },
+    });
     if (!res.ok) throw new Error(`Polling failed: ${res.status}`);
     const json = await res.json();
-    const status = (json.status || json.state || json.task_status || "").toString();
-    if (["succeeded","success","completed","ready"].includes(status)) return json;
-    if (["failed","error"].includes(status)) throw new Error(json.error || "Generation failed");
-    await new Promise(r=>setTimeout(r, 1500));
+    const status = (
+      json.status ||
+      json.state ||
+      json.task_status ||
+      ""
+    ).toString();
+    if (["succeeded", "success", "completed", "ready"].includes(status))
+      return json;
+    if (["failed", "error"].includes(status))
+      throw new Error(json.error || "Generation failed");
+    await new Promise((r) => setTimeout(r, 1500));
   }
   throw new Error("Timeout waiting for generation");
 }
@@ -382,7 +438,12 @@ export const handleGenerate: RequestHandler = async (req, res) => {
   try {
     const apiKey = process.env.FAL_KEY ?? process.env.FAL_API_KEY;
     if (!apiKey) {
-      res.status(400).json({ error: "FAL_KEY environment variable missing. Set it to call the model." });
+      res
+        .status(400)
+        .json({
+          error:
+            "FAL_KEY environment variable missing. Set it to call the model.",
+        });
       return;
     }
 
@@ -391,44 +452,52 @@ export const handleGenerate: RequestHandler = async (req, res) => {
     const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
     const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
 
-    const { personImageBase64, dishImageUrl, background, greeting } = req.body as {
-      personImageBase64: string; dishImageUrl: string; background?: string; greeting?: string;
-    };
+    const { personImageBase64, dishImageUrl, background, greeting } =
+      req.body as {
+        personImageBase64: string;
+        dishImageUrl: string;
+        background?: string;
+        greeting?: string;
+      };
 
     console.log("Background video selected:", background);
 
     if (!personImageBase64 || !dishImageUrl) {
-      res.status(400).json({ error: "personImageBase64 and dishImageUrl are required" });
+      res
+        .status(400)
+        .json({ error: "personImageBase64 and dishImageUrl are required" });
       return;
     }
 
     // Parse the base64 image
     const { buffer: personImageBuffer } = parseDataUrl(personImageBase64);
     console.log("Person image buffer size:", personImageBuffer.length, "bytes");
-    
+
     // Remove background using Clipdrop
-    const clipdropApiKey = "75f768c7813dc42a5c4948b5b6b79121c712116c7baff2c1f41e97f63485625e048406d24697dc623b77e785580d7f0e";
+    const clipdropApiKey =
+      "75f768c7813dc42a5c4948b5b6b79121c712116c7baff2c1f41e97f63485625e048406d24697dc623b77e785580d7f0e";
     let uploadedPersonUrl: string;
-    
+
     // Upload original image to Cloudinary for FAL AI processing
     uploadedPersonUrl = await uploadToCloudinaryFromDataUrl(personImageBase64);
 
     // Convert local dish image path to full URL for FAL AI
     let dishImageUrlForFal = dishImageUrl;
-    if (dishImageUrl.startsWith('/')) {
+    if (dishImageUrl.startsWith("/")) {
       // Convert local path to full URL
-      const baseUrl = process.env.BASE_URL || 'http://localhost:5205';
+      const baseUrl = process.env.BASE_URL || "http://localhost:5205";
       dishImageUrlForFal = `${baseUrl}${dishImageUrl}`;
     }
 
     // Focus on placing exact dish image in existing hands with full image and face retention
     // Enhanced face preservation to prevent cropping - using extremely low strength and maximum guidance
     // Background removal will be handled by Clipdrop after FAL AI processing
-    const baseInstruction = "The exact same person from the uploaded image with identical pose, hands, and FACE. The person is FRONT-FACING and CENTERED in the image, holding a festive brass plate/bowl with the EXACT product image from the reference. CRITICAL: The food item on the plate must be IDENTICAL to the reference product image - same exact dish, same exact food, same exact appearance, same exact shape, same exact color, same exact garnish, same exact texture, same exact size. DO NOT ADD ANY EXTRA ELEMENTS to the dish - no additional food items, no extra garnishes, no decorations, no modifications, no changes. The dish must be exactly as shown in the reference image with no additions or alterations. The dish must be clearly visible and prominent on the plate. MANDATORY: Use ONLY the hands that are already visible in the uploaded image - do not change hand position, do not add extra hands, do not generate new hands, do not create additional hands, do not show any other person's hands, do not add any extra limbs. Keep the person's original hands exactly as they are. NO OTHER HANDS: Only show the hands from the original uploaded image, no additional hands from any other person. FACE PRESERVATION IS ABSOLUTELY CRITICAL: The person's FACE MUST BE COMPLETELY VISIBLE from top of head to chin, not cropped, not cut off, not partially hidden, not obscured, not truncated, not sliced, not chopped, not removed, not missing any part. The face must be FULLY VISIBLE, FRONT-FACING, WELL-LIT, and CENTERED. Show the complete head including hair, forehead, eyes, nose, mouth, and chin. NO FACE CROPPING WHATSOEVER: Do not crop the face at any angle, do not cut off the top of the head, do not cut off the chin, do not cut off the sides of the face, do not cut off the forehead, do not cut off the hair, do not cut off any part of the head. The face must be completely intact and visible from the very top of the head to the bottom of the chin. MAINTAIN ORIGINAL IMAGE DIMENSIONS: Keep the exact same height and aspect ratio as the original uploaded image. Show the complete full body image, full height, full person visible, not cropped. RETAIN ORIGINAL HEIGHT: The output image must have the exact same height as the input image. NO CROPPING: Do not crop the image, show the complete person from head to toe, maintain original image boundaries. Natural lighting, Indian festive vibe, high quality, detailed, professional photography.";
+    const baseInstruction =
+      "The exact same person from the uploaded image with identical pose, hands, and FACE. The person is FRONT-FACING and CENTERED in the image, holding a festive brass plate/bowl with the EXACT product image from the reference. CRITICAL: The food item on the plate must be IDENTICAL to the reference product image - same exact dish, same exact food, same exact appearance, same exact shape, same exact color, same exact garnish, same exact texture, same exact size. DO NOT ADD ANY EXTRA ELEMENTS to the dish - no additional food items, no extra garnishes, no decorations, no modifications, no changes. The dish must be exactly as shown in the reference image with no additions or alterations. The dish must be clearly visible and prominent on the plate. MANDATORY: Use ONLY the hands that are already visible in the uploaded image - do not change hand position, do not add extra hands, do not generate new hands, do not create additional hands, do not show any other person's hands, do not add any extra limbs. Keep the person's original hands exactly as they are. NO OTHER HANDS: Only show the hands from the original uploaded image, no additional hands from any other person. FACE PRESERVATION IS ABSOLUTELY CRITICAL: The person's FACE MUST BE COMPLETELY VISIBLE from top of head to chin, not cropped, not cut off, not partially hidden, not obscured, not truncated, not sliced, not chopped, not removed, not missing any part. The face must be FULLY VISIBLE, FRONT-FACING, WELL-LIT, and CENTERED. Show the complete head including hair, forehead, eyes, nose, mouth, and chin. NO FACE CROPPING WHATSOEVER: Do not crop the face at any angle, do not cut off the top of the head, do not cut off the chin, do not cut off the sides of the face, do not cut off the forehead, do not cut off the hair, do not cut off any part of the head. The face must be completely intact and visible from the very top of the head to the bottom of the chin. MAINTAIN ORIGINAL IMAGE DIMENSIONS: Keep the exact same height and aspect ratio as the original uploaded image. Show the complete full body image, full height, full person visible, not cropped. RETAIN ORIGINAL HEIGHT: The output image must have the exact same height as the input image. NO CROPPING: Do not crop the image, show the complete person from head to toe, maintain original image boundaries. Natural lighting, Indian festive vibe, high quality, detailed, professional photography.";
 
     console.log("Uploaded person URL:", uploadedPersonUrl);
     console.log("Dish image URL for FAL:", dishImageUrlForFal);
-    
+
     const payload: any = {
       person_image_url: uploadedPersonUrl,
       product_image_url: dishImageUrlForFal,
@@ -451,13 +520,17 @@ export const handleGenerate: RequestHandler = async (req, res) => {
 
     const run = await fetch(MODEL_URL, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: `Key ${apiKey}` },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Key ${apiKey}`,
+      },
       body: JSON.stringify(payload),
     });
 
     if (run.status === 202) {
       const started = await run.json();
-      const statusUrl = started?.response_url || started?.status_url || started?.url;
+      const statusUrl =
+        started?.response_url || started?.status_url || started?.url;
       if (!statusUrl) throw new Error("Missing response url from fal");
       const finalJson = await pollUntilReady(statusUrl, apiKey);
       const imageUrl = extractImageUrl(finalJson);
@@ -466,14 +539,43 @@ export const handleGenerate: RequestHandler = async (req, res) => {
       return;
     }
 
-    const json = await run.json();
+    // Read response safely (may be JSON or text)
+    let json: any = null;
+    try {
+      json = await run.json();
+    } catch (e) {
+      // If parsing fails, try to read as text
+      try {
+        json = { error: await run.text() };
+      } catch (e2) {
+        json = { error: "Unknown error from model service" };
+      }
+    }
+
     if (!run.ok) {
-      res.status(run.status).json({ error: json?.error || JSON.stringify(json) });
+      console.error("FAL model returned error:", run.status, json);
+      if (run.status === 403) {
+        // Friendly message for authorization/quota issues
+        res
+          .status(502)
+          .json({
+            error:
+              "Image generation service refused the request (403). Please check FAL_KEY, account access or quota.",
+          });
+        return;
+      }
+
+      res
+        .status(run.status)
+        .json({ error: json?.error || JSON.stringify(json) });
       return;
     }
+
     const imageUrl = extractImageUrl(json);
     if (!imageUrl) {
-      res.status(500).json({ error: "Model response did not include an image URL" });
+      res
+        .status(500)
+        .json({ error: "Model response did not include an image URL" });
       return;
     }
 
@@ -482,13 +584,21 @@ export const handleGenerate: RequestHandler = async (req, res) => {
     // We do this before background removal so FLUX Kontext can work with the original background
     let fluxKontextImageUrl: string;
     let fluxKontextSuccess = false;
-    
+
     try {
-      console.log("Applying FLUX Kontext transformation for digital illustration style...");
-      const fluxKontextUrl = await applyFluxKontextTransformation(imageUrl, apiKey);
+      console.log(
+        "Applying FLUX Kontext transformation for digital illustration style...",
+      );
+      const fluxKontextUrl = await applyFluxKontextTransformation(
+        imageUrl,
+        apiKey,
+      );
       fluxKontextImageUrl = fluxKontextUrl;
       fluxKontextSuccess = true;
-      console.log("FLUX Kontext transformation successful:", fluxKontextImageUrl);
+      console.log(
+        "FLUX Kontext transformation successful:",
+        fluxKontextImageUrl,
+      );
     } catch (fluxKontextError) {
       console.error("FLUX Kontext transformation failed:", fluxKontextError);
       console.warn("FLUX Kontext transformation failed, using original image");
@@ -500,31 +610,45 @@ export const handleGenerate: RequestHandler = async (req, res) => {
     // This step creates transparent background from the illustrated image
     let finalImageUrl: string;
     let backgroundRemoved = false;
-    
-    console.log("Cloudinary credentials available:", !!cloudName && !!cloudinaryApiKey && !!cloudinaryApiSecret);
-    
+
+    console.log(
+      "Cloudinary credentials available:",
+      !!cloudName && !!cloudinaryApiKey && !!cloudinaryApiSecret,
+    );
+
     if (cloudName && cloudinaryApiKey && cloudinaryApiSecret) {
       try {
-        console.log("Processing FLUX Kontext image with Cloudinary for background removal...");
+        console.log(
+          "Processing FLUX Kontext image with Cloudinary for background removal...",
+        );
         console.log("FLUX Kontext image URL:", fluxKontextImageUrl);
-        
-        finalImageUrl = await removeBackgroundWithCloudinary(fluxKontextImageUrl, cloudName, cloudinaryApiKey, cloudinaryApiSecret);
+
+        finalImageUrl = await removeBackgroundWithCloudinary(
+          fluxKontextImageUrl,
+          cloudName,
+          cloudinaryApiKey,
+          cloudinaryApiSecret,
+        );
         backgroundRemoved = true;
         console.log("Cloudinary background removal successful:", finalImageUrl);
       } catch (cloudinaryError) {
         console.error("Cloudinary background removal failed:", cloudinaryError);
-        console.warn("Background removal failed, using FLUX Kontext image without background removal");
+        console.warn(
+          "Background removal failed, using FLUX Kontext image without background removal",
+        );
         finalImageUrl = fluxKontextImageUrl;
         backgroundRemoved = false;
       }
     } else {
-      console.warn("Cloudinary credentials not set, skipping background removal");
+      console.warn(
+        "Cloudinary credentials not set, skipping background removal",
+      );
       finalImageUrl = fluxKontextImageUrl;
       backgroundRemoved = false;
     }
-    
-    res.json({ 
-      image_url: finalImageUrl, 
+
+    res.json({
+      image_url: finalImageUrl,
       original_image_url: imageUrl,
       flux_kontext_image_url: fluxKontextImageUrl,
       background_removed_image_url: backgroundRemoved ? finalImageUrl : null,
@@ -532,7 +656,9 @@ export const handleGenerate: RequestHandler = async (req, res) => {
       meta: json,
       background_removed: backgroundRemoved,
       flux_kontext_transformed: fluxKontextSuccess,
-      illustration_style: fluxKontextSuccess ? "digital_illustration_diwali" : "original"
+      illustration_style: fluxKontextSuccess
+        ? "digital_illustration_diwali"
+        : "original",
     });
   } catch (error: any) {
     res.status(500).json({ error: error?.message || "Unexpected error" });
@@ -544,22 +670,24 @@ export const handleTestFluxKontext = async (req: any, res: any) => {
   try {
     const apiKey = process.env.FAL_KEY;
     if (!apiKey) {
-      res.status(500).json({ 
-        success: false, 
-        error: "FAL_KEY environment variable not set" 
+      res.status(500).json({
+        success: false,
+        error: "FAL_KEY environment variable not set",
       });
       return;
     }
-    
+
     console.log("Testing FLUX Kontext API...");
     console.log("API Key length:", apiKey.length);
-    
+
     // Test with a real image URL
-    const testImageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop";
+    const testImageUrl =
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=200&h=200&fit=crop";
     console.log("Testing with image URL:", testImageUrl);
-    
-    const prompt = "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Change dress to Indian ethnic wear. Keep the same background as the input image.";
-    
+
+    const prompt =
+      "Convert this person image to a polished digital illustration art style. Use a cartoonish character design with smooth lines, subtle gradients for shading, and a warm Indian Diwali color palette (yellows, oranges, browns). Change dress to Indian ethnic wear. Keep the same background as the input image.";
+
     const payload = {
       prompt: prompt,
       image_url: testImageUrl,
@@ -567,47 +695,52 @@ export const handleTestFluxKontext = async (req: any, res: any) => {
       num_inference_steps: 20,
       seed: Math.floor(Math.random() * 1000000),
     };
-    
+
     console.log("FLUX Kontext test payload:", JSON.stringify(payload, null, 2));
-    
+
     const response = await fetch(FLUX_KONTEXT_URL, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Key ${apiKey}`,
+        Authorization: `Key ${apiKey}`,
       },
       body: JSON.stringify(payload),
     });
-    
+
     console.log("FLUX Kontext test response status:", response.status);
-    console.log("FLUX Kontext test response headers:", Object.fromEntries(response.headers.entries()));
-    
+    console.log(
+      "FLUX Kontext test response headers:",
+      Object.fromEntries(response.headers.entries()),
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("FLUX Kontext test error:", errorText);
-      res.json({ 
-        success: false, 
+      res.json({
+        success: false,
         error: `FLUX Kontext API test failed: ${response.status} ${response.statusText} - ${errorText}`,
-        status: response.status
+        status: response.status,
       });
       return;
     }
-    
+
     const result = await response.json();
-    console.log("FLUX Kontext test successful, result:", JSON.stringify(result, null, 2));
-    
-    res.json({ 
-      success: true, 
+    console.log(
+      "FLUX Kontext test successful, result:",
+      JSON.stringify(result, null, 2),
+    );
+
+    res.json({
+      success: true,
       message: "FLUX Kontext API is working",
       result: result,
-      status: response.status
+      status: response.status,
     });
-    
   } catch (error: any) {
     console.error("FLUX Kontext test error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error?.message || "FLUX Kontext test failed" 
+    res.status(500).json({
+      success: false,
+      error: error?.message || "FLUX Kontext test failed",
     });
   }
 };
@@ -615,65 +748,76 @@ export const handleTestFluxKontext = async (req: any, res: any) => {
 // Test endpoint for Clipdrop API
 export const handleTestClipdrop = async (req: any, res: any) => {
   try {
-    const clipdropApiKey = "75f768c7813dc42a5c4948b5b6b79121c712116c7baff2c1f41e97f63485625e048406d24697dc623b77e785580d7f0e";
-    
+    const clipdropApiKey =
+      "75f768c7813dc42a5c4948b5b6b79121c712116c7baff2c1f41e97f63485625e048406d24697dc623b77e785580d7f0e";
+
     console.log("Testing Clipdrop API...");
     console.log("API Key length:", clipdropApiKey.length);
-    
+
     // Test with a real image URL first
-    const testImageUrl = "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop";
+    const testImageUrl =
+      "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=100&h=100&fit=crop";
     console.log("Downloading test image from:", testImageUrl);
-    
+
     const imageResponse = await fetch(testImageUrl);
     if (!imageResponse.ok) {
       throw new Error(`Failed to download test image: ${imageResponse.status}`);
     }
-    
+
     const testImageBuffer = Buffer.from(await imageResponse.arrayBuffer());
     console.log("Test image buffer size:", testImageBuffer.length, "bytes");
-    
+
     const formData = new FormData();
     const blob = new Blob([testImageBuffer as any]);
     formData.append("image_file", blob, "test.jpg");
-    
+
     console.log("Sending request to Clipdrop API...");
-    const response = await fetch("https://clipdrop-api.co/remove-background/v1", {
-      method: "POST",
-      headers: {
-        "x-api-key": clipdropApiKey,
+    const response = await fetch(
+      "https://clipdrop-api.co/remove-background/v1",
+      {
+        method: "POST",
+        headers: {
+          "x-api-key": clipdropApiKey,
+        },
+        body: formData as any,
       },
-      body: formData as any,
-    });
-    
+    );
+
     console.log("Clipdrop test response status:", response.status);
-    console.log("Clipdrop test response headers:", Object.fromEntries(response.headers.entries()));
-    
+    console.log(
+      "Clipdrop test response headers:",
+      Object.fromEntries(response.headers.entries()),
+    );
+
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Clipdrop test error:", errorText);
-      res.json({ 
-        success: false, 
+      res.json({
+        success: false,
         error: `Clipdrop API test failed: ${response.status} ${response.statusText} - ${errorText}`,
-        status: response.status
+        status: response.status,
       });
       return;
     }
-    
+
     const result = await response.arrayBuffer();
-    console.log("Clipdrop test successful, result size:", result.byteLength, "bytes");
-    
-    res.json({ 
-      success: true, 
+    console.log(
+      "Clipdrop test successful, result size:",
+      result.byteLength,
+      "bytes",
+    );
+
+    res.json({
+      success: true,
       message: "Clipdrop API is working",
       resultSize: result.byteLength,
-      status: response.status
+      status: response.status,
     });
-    
   } catch (error: any) {
     console.error("Clipdrop test error:", error);
-    res.status(500).json({ 
-      success: false, 
-      error: error?.message || "Clipdrop test failed" 
+    res.status(500).json({
+      success: false,
+      error: error?.message || "Clipdrop test failed",
     });
   }
 };
