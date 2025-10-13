@@ -2894,7 +2894,7 @@ export default function Create() {
                       {greeting && (
                         <div className="w-full absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center" style={{zIndex: 1002}}>
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-xl md:text-3xl font-semibold leading-tight">
+                            <p className="text-xl md:text-2xl font-semibold leading-tight">
                               {greeting}
                             </p>
                           </div>
