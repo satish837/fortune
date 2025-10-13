@@ -12,7 +12,11 @@ import {
 import { cn } from "@/lib/utils";
 import { BarChart3, LogOut } from "lucide-react";
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faInstagram, faFacebook, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
+import {
+  faInstagram,
+  faFacebook,
+  faWhatsapp,
+} from "@fortawesome/free-brands-svg-icons";
 import { toast } from "@/hooks/use-toast";
 // In dev, Vite's error overlay can crash when console logs receive complex/circular objects.
 // Patch console.error to safely serialize arguments to primitives to avoid the overlay throwing.
@@ -2829,16 +2833,16 @@ export default function Create() {
       const fullPath = parsed.pathname; // e.g. /<cloud_name>/video/upload/v1234/path/to/file.mp4
 
       // Find the upload segment in the path
-      const uploadIndex = fullPath.indexOf('/upload/');
+      const uploadIndex = fullPath.indexOf("/upload/");
       if (uploadIndex === -1) {
         // Not a Cloudinary-style URL we know how to transform
         return url;
       }
 
       const beforeUpload = fullPath.substring(0, uploadIndex); // includes cloud name
-      const afterUpload = fullPath.substring(uploadIndex + '/upload/'.length); // rest after upload/
+      const afterUpload = fullPath.substring(uploadIndex + "/upload/".length); // rest after upload/
 
-      const transform = 'f_mp4,q_auto:best';
+      const transform = "f_mp4,q_auto:best";
 
       // Reconstruct URL preserving host and cloud name
       return `${parsed.protocol}//${parsed.hostname}${beforeUpload}/upload/${transform}/${afterUpload}`;
@@ -2876,7 +2880,8 @@ export default function Create() {
   const shareToWhatsApp = () => {
     // Determine best URL to share (cloud first, then recorded)
     const urlToShare =
-      (cloudinaryVideoUrl && (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      (cloudinaryVideoUrl &&
+        (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
       recordedVideoUrl ||
       null;
 
@@ -2943,7 +2948,8 @@ export default function Create() {
 
   const shareToFacebook = () => {
     const urlToShare =
-      (cloudinaryVideoUrl && (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
+      (cloudinaryVideoUrl &&
+        (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
       recordedVideoUrl ||
       null;
 
@@ -3316,7 +3322,6 @@ export default function Create() {
                 </p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-               
                 <Button
                   disabled={!photoData}
                   className="flex-1 h-12 bg-orange-600 hover:bg-orange-700"
@@ -3896,7 +3901,10 @@ export default function Create() {
                       className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <FontAwesomeIcon icon={faInstagram} className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faInstagram}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
@@ -3907,7 +3915,10 @@ export default function Create() {
                       className="h-12 bg-green-500 hover:bg-green-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faWhatsapp}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
@@ -3918,7 +3929,10 @@ export default function Create() {
                       className="h-12 bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <FontAwesomeIcon icon={faFacebook} className="w-5 h-5" />
+                        <FontAwesomeIcon
+                          icon={faFacebook}
+                          className="w-5 h-5"
+                        />
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
