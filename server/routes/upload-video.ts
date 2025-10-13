@@ -1,7 +1,12 @@
 import { RequestHandler } from "express";
-import crypto from "crypto";
+import cloudinary from "cloudinary";
+import { Readable } from "stream";
 
-const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
+cloudinary.v2.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
 
 export const handleUploadVideo: RequestHandler = async (req, res) => {
   try {
@@ -13,9 +18,7 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       return res.status(500).json({ error: "Cloudinary configuration missing" });
     }
 
-    // Support JSON data URL payloads
     const contentType = (req.headers["content-type"] || "").toString();
-
     let videoBuffer: Buffer | null = null;
     let originalFilename = `festive-postcard-${Date.now()}.mp4`;
 
@@ -30,16 +33,14 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       const base64 = match[2];
       videoBuffer = Buffer.from(base64, "base64");
       originalFilename = body.fileName || originalFilename;
-    } else if (contentType.includes('application/octet-stream')) {
-      // Raw binary upload
+    } else if (contentType.includes("application/octet-stream")) {
       const raw = req.body as Buffer | undefined;
       if (!raw || !(raw instanceof Buffer) || raw.length === 0) {
-        return res.status(400).json({ error: 'Raw binary body required' });
+        return res.status(400).json({ error: "Raw binary body required" });
       }
       videoBuffer = Buffer.from(raw);
-      originalFilename = req.headers['x-filename']?.toString() || originalFilename;
+      originalFilename = (req.headers["x-filename"] || originalFilename).toString();
     } else {
-      // Try to read file from multipart (if any)
       const possible = (req as any).body && ((req as any).body.video || (req as any).body.videoData);
       if (possible && typeof possible === "string" && possible.startsWith("data:")) {
         const match = possible.match(/^data:(.+);base64,(.+)$/);
@@ -52,54 +53,38 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       return res.status(400).json({ error: "Video file is required" });
     }
 
-    // Prepare Cloudinary signed upload
     const timestamp = Math.round(new Date().getTime() / 1000);
     const publicId = `diwali-postcards/videos/festive-postcard-${timestamp}`;
-    const params: Record<string, any> = {
-      public_id: publicId,
-      folder: "diwali-postcards/videos",
-      resource_type: "video",
-      timestamp,
-    };
 
-    const signatureString = Object.keys(params)
-      .sort()
-      .map((key) => `${key}=${params[key]}`)
-      .join("&") + apiSecret;
+    console.log("📤 Uploading to Cloudinary via SDK (upload_stream)...", { publicId, size: videoBuffer.length });
 
-    const signature = crypto.createHash("sha1").update(signatureString).digest("hex");
+    const uploadResult: any = await new Promise((resolve, reject) => {
+      const uploadStream = cloudinary.v2.uploader.upload_stream(
+        {
+          resource_type: "video",
+          public_id: publicId,
+          folder: "diwali-postcards/videos",
+        },
+        (error, result) => {
+          if (error) return reject(error);
+          resolve(result);
+        }
+      );
 
-    const form = new FormData();
-    const blob = new Blob([videoBuffer as any]);
-    form.append("file", blob, originalFilename);
-    form.append("public_id", publicId);
-    form.append("folder", "diwali-postcards/videos");
-    form.append("resource_type", "video");
-    form.append("api_key", apiKey);
-    form.append("timestamp", String(timestamp));
-    form.append("signature", signature);
-
-    console.log("📤 Uploading to Cloudinary with signed upload...", { publicId, size: videoBuffer.length });
-
-    const uploadResponse = await fetch(`${CLOUDINARY_BASE_URL}/${cloudName}/video/upload`, {
-      method: "POST",
-      body: form as any,
+      const readable = new Readable();
+      readable._read = () => {}; // noop
+      readable.push(videoBuffer);
+      readable.push(null);
+      readable.pipe(uploadStream);
     });
 
-    console.log("📡 Cloudinary response status:", uploadResponse.status);
-
-    if (!uploadResponse.ok) {
-      const errorText = await uploadResponse.text();
-      console.error("❌ Cloudinary upload failed:", errorText);
-      return res.status(500).json({ error: "Cloudinary upload failed", details: errorText });
+    if (!uploadResult) {
+      throw new Error("Cloudinary upload returned no result");
     }
 
-    const uploadData = await uploadResponse.json();
-    console.log("✅ Video uploaded successfully:", uploadData.secure_url);
+    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive,br_200k/${uploadResult.public_id}.mp4`;
 
-    const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive,br_200k/${uploadData.public_id}.mp4`;
-
-    res.status(200).json({ success: true, secure_url: optimizedUrl, public_id: uploadData.public_id, originalUrl: uploadData.secure_url });
+    res.status(200).json({ success: true, secure_url: optimizedUrl, public_id: uploadResult.public_id, originalUrl: uploadResult.secure_url });
   } catch (error: any) {
     console.error("❌ Error in upload-video route:", error);
     res.status(500).json({ error: "Failed to upload video", details: error?.message || String(error) });
