@@ -7,6 +7,7 @@ import { handleSendOTP } from "./routes/send-otp";
 import { handleVerifyOTP } from "./routes/verify-otp";
 import { handleExistingUserOTP } from "./routes/existing-user-otp";
 import { handleTinyPNGConfig } from "./routes/tinypng-config";
+import { handleCloudinaryConfig } from "./routes/cloudinary-config";
 
 const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
 
@@ -25,6 +26,7 @@ export function createServer() {
   });
 
   app.get("/api/demo", handleDemo);
+  app.get("/api/cloudinary-config", handleCloudinaryConfig);
   app.post("/api/generate", handleGenerate);
   app.get("/api/test-clipdrop", handleTestClipdrop);
   app.get("/api/test-flux-kontext", handleTestFluxKontext);
