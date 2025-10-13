@@ -2117,33 +2117,8 @@ export default function Create() {
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
       });
 
-      // Try direct unsigned Cloudinary upload first (client-side)
-      if (cloudinaryConfig?.cloudName && cloudinaryConfig?.uploadPreset) {
-        try {
-          const form = new FormData();
-          form.append('file', videoBlob, 'festive-postcard-video.mp4');
-          form.append('upload_preset', cloudinaryConfig.uploadPreset);
-
-          const cloudUrl = `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/video/upload`;
-          console.log('📤 Uploading directly to Cloudinary (unsigned)...');
-          const directRes = await fetch(cloudUrl, { method: 'POST', body: form });
-          console.log('📡 Direct upload response status:', directRes.status);
-          if (directRes.ok) {
-            const directJson = await directRes.json();
-            const url = directJson.secure_url || directJson.url;
-            setCloudinaryVideoUrl(url);
-            console.log('✅ Direct upload success:', url);
-            return url;
-          } else {
-            const txt = await directRes.text();
-            console.warn('Direct unsigned upload failed, falling back to server proxy:', txt);
-          }
-        } catch (err) {
-          console.warn('Direct Cloudinary upload failed, will fallback to server proxy:', err);
-        }
-      }
-
-      // Fallback: send base64 JSON payload to server-side upload endpoint
+      // Always use server-side signed upload to avoid CORS/stream issues
+      // Convert to base64 and POST to /api/upload-video
       const arrayBuffer = await videoBlob.arrayBuffer();
       const base64 = arrayBufferToBase64(arrayBuffer);
       const videoData = `data:${videoBlob.type};base64,${base64}`;
@@ -3062,7 +3037,7 @@ export default function Create() {
                     }}
                     className="h-8 px-4 bg-blue-500 hover:bg-blue-600 text-white text-sm"
                   >
-                    📋 Copy Video URL
+                    ��� Copy Video URL
                   </Button>
                   
                   {/* Mobile-optimized video preview */}
