@@ -2557,6 +2557,8 @@ export default function Create() {
     }
   };
 
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+
   const downloadVideo = async () => {
     if (recordedVideoUrl) {
       try {
@@ -2603,7 +2605,8 @@ export default function Create() {
           const uploadData = await uploadResponse.json();
           console.log("✅ Video uploaded successfully:", uploadData);
 
-          videoUrl = uploadData.url;
+          // Prefer secure_url (optimized transform) returned by API
+          videoUrl = uploadData.secure_url || uploadData.secureUrl || uploadData.url || uploadData.secureUrl || uploadData.originalUrl || recordedVideoUrl;
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
@@ -2624,10 +2627,37 @@ export default function Create() {
           const resp = await fetch(videoUrl, { mode: 'cors' });
           if (!resp.ok) throw new Error('Failed to fetch video for download');
           const blob = await resp.blob();
-          const urlObj = URL.createObjectURL(blob);
+
+          // Ensure blob is an MP4; if not, try converting via Cloudinary fallback
+          const isMp4 = blob.type === 'video/mp4' || (blob.type && blob.type.includes('mp4'));
+          let downloadBlob = blob;
+
+          if (!isMp4 && cloudinaryVideoUrl) {
+            // If blob not mp4, try to fetch the Cloudinary optimized MP4 directly
+            try {
+              const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+              const resp2 = await fetch(socialUrl, { mode: 'cors' });
+              if (resp2.ok) {
+                const blob2 = await resp2.blob();
+                if (blob2.type === 'video/mp4' || (blob2.type && blob2.type.includes('mp4'))) {
+                  downloadBlob = blob2;
+                }
+              }
+            } catch (e) {
+              // ignore and fallback to original blob
+            }
+          }
+
+          const urlObj = URL.createObjectURL(downloadBlob);
           const link = document.createElement('a');
           // Derive filename
-          const parsed = (() => { try { return new URL(videoUrl); } catch(e) { return null; } })();
+          const parsed = (() => {
+            try {
+              return new URL(videoUrl);
+            } catch (e) {
+              return null;
+            }
+          })();
           const filename = parsed ? (parsed.pathname.split('/').pop() || `diwali-postcard-${Date.now()}.mp4`) : `diwali-postcard-${Date.now()}.mp4`;
           link.href = urlObj;
           link.download = filename.endsWith('.mp4') ? filename : `${filename}.mp4`;
