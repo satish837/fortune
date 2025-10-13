@@ -15,16 +15,46 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(500).json({ error: 'Cloudinary configuration missing' });
     }
 
-    // Get the video file from the request
-    const videoFile = req.body.video;
-    if (!videoFile) {
+    // Determine video data from request. Support JSON { videoData: 'data:...base64,...' } or multipart with req.body.video
+    let videoBuffer: Buffer | null = null;
+    let originalFilename = 'festive-postcard-video.mp4';
+
+    const contentType = (req.headers['content-type'] || '').toString();
+
+    if (contentType.includes('application/json')) {
+      const body = req.body || {};
+      const dataUrl = body.videoData || body.video || body.video_data || body.videoDataUrl;
+      if (!dataUrl || typeof dataUrl !== 'string') {
+        return res.status(400).json({ error: 'videoData (data URL) is required in JSON body' });
+      }
+      const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
+      if (!match) return res.status(400).json({ error: 'Invalid data URL' });
+      const base64 = match[2];
+      videoBuffer = Buffer.from(base64, 'base64');
+      originalFilename = body.fileName || originalFilename;
+    } else {
+      // Try to use req.body.video (may be available in some runtimes) or raw body
+      const possible = (req.body && (req.body.video || req.body.videoData || req.body.videoDataUrl)) as any;
+      if (possible && typeof possible === 'string' && possible.startsWith('data:')) {
+        const match = possible.match(/^data:(.+);base64,(.+)$/);
+        if (!match) return res.status(400).json({ error: 'Invalid data URL' });
+        videoBuffer = Buffer.from(match[2], 'base64');
+      } else if (possible && possible instanceof Buffer) {
+        videoBuffer = possible;
+      } else if (possible && possible.data) {
+        // Some runtimes provide array buffer in .data
+        videoBuffer = Buffer.from(possible.data);
+      }
+    }
+
+    if (!videoBuffer) {
       return res.status(400).json({ error: 'Video file is required' });
     }
 
     // Generate signature for signed upload
     const timestamp = Math.round(new Date().getTime() / 1000);
     const publicId = `diwali-postcards/videos/festive-postcard-${timestamp}`;
-    
+
     const params = {
       public_id: publicId,
       folder: 'diwali-postcards/videos',
@@ -45,7 +75,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
     // Upload to Cloudinary using fetch
     const formData = new FormData();
-    formData.append('file', videoFile, 'festive-postcard-video.mp4');
+    // Use Blob for compatibility
+    const blob = new Blob([videoBuffer]);
+    formData.append('file', blob, originalFilename);
     formData.append('public_id', publicId);
     formData.append('folder', 'diwali-postcards/videos');
     formData.append('resource_type', 'video');
