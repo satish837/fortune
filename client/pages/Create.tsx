@@ -3764,7 +3764,7 @@ export default function Create() {
                     </div>
                   )}
 
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
+                  <div className="flex justify-center gap-3 mb-4">
                     {/* Instagram */}
                     <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
                       <div className="flex flex-col items-center">
