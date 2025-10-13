@@ -2105,15 +2105,17 @@ export default function Create() {
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2)
       });
       
-      // Use server-side signed upload endpoint
-      const formData = new FormData();
-      formData.append('video', videoBlob, 'festive-postcard-video.mp4');
-      
-      console.log('📤 Uploading via server-side signed upload...');
-      
+      // Convert blob to base64 and send as JSON to server-side upload endpoint
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      const videoData = `data:${videoBlob.type};base64,${base64}`;
+
+      console.log('📤 Uploading via server-side signed upload (JSON payload)...');
+
       const uploadResponse = await fetch('/api/upload-video', {
         method: 'POST',
-        body: formData,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoData, fileName: `festive-postcard-${Date.now()}` }),
       });
       
       console.log('📡 Upload response status:', uploadResponse.status);
