@@ -3316,13 +3316,7 @@ export default function Create() {
                 </p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-                <Button
-                  disabled={true}
-                  className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white"
-                  onClick={() => setStep(step - 1)}
-                >
-                  �� Previous
-                </Button>
+               
                 <Button
                   disabled={!photoData}
                   className="flex-1 h-12 bg-orange-600 hover:bg-orange-700"
