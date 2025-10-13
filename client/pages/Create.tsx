@@ -1903,7 +1903,7 @@ export default function Create() {
         setIsRecording(false);
         
         // Log the final format for debugging
-        console.log(`✅ Video recorded successfully as ${mimeType}`);
+        console.log(`�� Video recorded successfully as ${mimeType}`);
         if (mimeType.includes('mp4')) {
           console.log('🎉 MP4 format - Perfect for social media sharing!');
         } else {
@@ -2214,6 +2214,23 @@ export default function Create() {
     }
   };
 
+  // Build standardized social URL: https://res.cloudinary.com/<host>/video/upload/f_mp4,q_auto:best/v{version}/diwali-postcards/videos/{filename}.mp4
+  const buildSocialUrl = (url?: string | null) => {
+    if (!url) return null;
+    try {
+      const parsed = new URL(url);
+      const filename = parsed.pathname.split('/').pop() || '';
+      const hostname = parsed.hostname; // includes cloud name like dsol5tcu0
+      // Try to extract version from the path: /v12345/
+      const versionMatch = parsed.pathname.match(/\/v(\d+)\//);
+      const versionSegment = versionMatch ? `/v${versionMatch[1]}` : '';
+      const transform = 'f_mp4,q_auto:best';
+      return `${parsed.protocol}//${hostname}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${filename}`;
+    } catch (e) {
+      return null;
+    }
+  };
+
   // Social media sharing functions
   const shareToInstagram = () => {
     if (cloudinaryVideoUrl) {
@@ -2221,7 +2238,7 @@ export default function Create() {
       // Open Instagram with instructions
       const message = "To share your Diwali postcard video on Instagram:\n\n1. Download the video first\n2. Open Instagram\n3. Create a new post\n4. Upload the downloaded video\n5. Add your caption and share!";
       alert(message);
-      
+
       // Also open Instagram
       window.open('https://www.instagram.com/', '_blank');
     }
@@ -2232,7 +2249,7 @@ export default function Create() {
       // TikTok doesn't support direct video sharing via URL
       const message = "To share your Diwali postcard video on TikTok:\n\n1. Download the video first\n2. Open TikTok\n3. Tap the + button to create\n4. Upload the downloaded video\n5. Add effects, music, and share!";
       alert(message);
-      
+
       // Also open TikTok
       window.open('https://www.tiktok.com/', '_blank');
     }
@@ -2241,7 +2258,7 @@ export default function Create() {
   const shareToWhatsApp = () => {
     if (cloudinaryVideoUrl) {
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      
+
       // Track WhatsApp sharing
       if (typeof window !== 'undefined' && (window as any).fbq) {
         (window as any).fbq('track', 'Share', {
@@ -2250,7 +2267,7 @@ export default function Create() {
           method: 'WhatsApp'
         });
       }
-      
+
       // Track with Google Tag Manager
       if (typeof window !== 'undefined' && (window as any).dataLayer) {
         (window as any).dataLayer.push({
@@ -2260,11 +2277,11 @@ export default function Create() {
           method: 'WhatsApp'
         });
       }
-      
+
       // Add WhatsApp-optimized transformations to the Cloudinary URL
       // This ensures the video is in a format WhatsApp can handle
       const optimizedUrl = cloudinaryVideoUrl.replace('/upload/', '/upload/f_mp4,q_auto:best,w_512,h_512,c_fill,ac_mp4,vc_h264,fl_progressive/');
-      
+
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + ' ' + optimizedUrl)}`;
       window.open(whatsappUrl, '_blank');
     } else if (recordedVideoUrl) {
@@ -2276,7 +2293,7 @@ export default function Create() {
           method: 'WhatsApp'
         });
       }
-      
+
       // Fallback to local video URL if Cloudinary upload is not ready
       const message = "Check out my festive Diwali postcard video! ���✨";
       const whatsappUrl = `https://wa.me/?text=${encodeURIComponent(message + ' ' + recordedVideoUrl)}`;
@@ -2296,7 +2313,7 @@ export default function Create() {
           method: 'Twitter'
         });
       }
-      
+
       // Track with Google Tag Manager
       if (typeof window !== 'undefined' && (window as any).dataLayer) {
         (window as any).dataLayer.push({
@@ -2306,9 +2323,10 @@ export default function Create() {
           method: 'Twitter'
         });
       }
-      
+
       const message = "Check out my festive Diwali postcard video! 🎆✨ #Diwali #Festive #Postcard";
-      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(cloudinaryVideoUrl)}`;
+      const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(socialUrl)}`;
       window.open(twitterUrl, '_blank');
     }
   };
@@ -2323,9 +2341,10 @@ export default function Create() {
           method: 'Facebook'
         });
       }
-      
+
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(cloudinaryVideoUrl)}&quote=${encodeURIComponent(message)}`;
+      const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(socialUrl)}&quote=${encodeURIComponent(message)}`;
       window.open(facebookUrl, '_blank');
     }
   };
@@ -2340,9 +2359,10 @@ export default function Create() {
           method: 'Telegram'
         });
       }
-      
+
       const message = "Check out my festive Diwali postcard video! 🎆✨";
-      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(cloudinaryVideoUrl)}&text=${encodeURIComponent(message)}`;
+      const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+      const telegramUrl = `https://t.me/share/url?url=${encodeURIComponent(socialUrl)}&text=${encodeURIComponent(message)}`;
       window.open(telegramUrl, '_blank');
     }
   };
@@ -2357,9 +2377,10 @@ export default function Create() {
           method: 'Copy Link'
         });
       }
-      
+
       try {
-        await navigator.clipboard.writeText(cloudinaryVideoUrl);
+        const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+        await navigator.clipboard.writeText(socialUrl);
         alert('Video link copied to clipboard! You can now paste it anywhere.');
       } catch (error) {
         // Fallback for older browsers
