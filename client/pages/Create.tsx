@@ -10,6 +10,20 @@ let Recorder: any = null;
 let RecorderStatus: any = null;
 let Encoders: any = null;
 
+// Safe ArrayBuffer -> Base64 conversion (chunked to avoid call stack issues)
+const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000; // 32KB per chunk
+  let binary = '';
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    // Convert chunk to string
+    const chunk = bytes.subarray(i, i + chunkSize);
+    // Use fromCharCode on an Array to avoid passing huge arg lists
+    binary += String.fromCharCode.apply(null, Array.from(chunk) as unknown as number[]);
+  }
+  return btoa(binary);
+};
+
 // Circular Progress Bar Component
 const CircularProgressBar = ({ percentage, size = 80, strokeWidth = 6, color = '#f97316' }: { 
   percentage: number; 
@@ -1413,7 +1427,7 @@ export default function Create() {
           console.log('📤 Uploading mobile video to Cloudinary...');
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('✅ Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
+          console.log('�� Mobile video uploaded to Cloudinary successfully!', cloudinaryUrl);
         } catch (error) {
           console.error('❌ Failed to upload mobile video to Cloudinary:', error);
         }
