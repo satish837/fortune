@@ -502,7 +502,7 @@ export default function Create() {
     };
 
     const handleUnhandledRejection = (event: PromiseRejectionEvent) => {
-      console.error("🚨 Unhandled promise rejection:", event.reason);
+      console.error("�� Unhandled promise rejection:", event.reason);
       setIsPageCrashed(true);
       setVideoGenerationError(
         "An unexpected error occurred. Please refresh the page and try again.",
@@ -3958,6 +3958,35 @@ export default function Create() {
                       download the video first, then upload it to the app!
                     </p>
                   </div>
+
+                  {/* Share Modal (opens when Quick Share or header is clicked) */}
+                  <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+                    <DialogContent className="max-w-lg">
+                      <DialogHeader>
+                        <DialogTitle className="text-orange-900">Share your Diwali Postcard</DialogTitle>
+                      </DialogHeader>
+
+                      <div className="mb-4">
+                        <video controls className="w-full rounded-lg" preload="metadata">
+                          <source src={cloudinaryVideoUrl || recordedVideoUrl} type="video/mp4" />
+                          Your browser does not support the video tag.
+                        </video>
+                      </div>
+
+                      <div className="grid grid-cols-3 gap-3 mb-4">
+                        <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 text-white">WhatsApp</Button>
+                        <Button onClick={shareToTwitter} className="h-12 bg-blue-400 text-white">Twitter</Button>
+                        <Button onClick={shareToFacebook} className="h-12 bg-blue-600 text-white">Facebook</Button>
+                        <Button onClick={shareToTelegram} className="h-12 bg-blue-500 text-white">Telegram</Button>
+                        <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white">Instagram</Button>
+                        <Button onClick={shareToTikTok} className="h-12 bg-black text-white">TikTok</Button>
+                      </div>
+
+                      <div className="text-right">
+                        <Button onClick={() => setIsShareModalOpen(false)} className="h-10">Close</Button>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
                 </div>
               )}
             </div>
