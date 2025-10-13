@@ -2160,26 +2160,21 @@ export default function Create() {
           const response = await fetch(recordedVideoUrl);
           const blob = await response.blob();
           
-          // Convert blob to base64 for API
+          // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
-          const base64 = arrayBufferToBase64(arrayBuffer);
-          const videoData = `data:${blob.type};base64,${base64}`;
-          
           console.log('🔧 Upload Details:', {
             videoSize: blob.size,
             videoType: blob.type,
             cloudinaryConfig: cloudinaryConfig
           });
-          
+
           const uploadResponse = await fetch('/api/upload-video', {
             method: 'POST',
             headers: {
-              'Content-Type': 'application/json',
+              'Content-Type': 'application/octet-stream',
+              'x-filename': `festive-postcard-${Date.now()}.mp4`
             },
-            body: JSON.stringify({
-              videoData: videoData,
-              fileName: `festive-postcard-${Date.now()}`
-            }),
+            body: arrayBuffer,
           });
           
           console.log('📡 Upload response status:', uploadResponse.status);
@@ -2643,7 +2638,7 @@ export default function Create() {
                 <p className="text-xs text-orange-900/60 mt-2">Maximum file size: 10MB (will be optimized automatically)</p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-                <Button disabled={true} className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(step - 1)}>← Previous</Button>
+                <Button disabled={true} className="flex-1 h-12 bg-gray-500 hover:bg-gray-600 text-white" onClick={()=>setStep(step - 1)}>�� Previous</Button>
                 <Button disabled={!photoData} className="flex-1 h-12 bg-orange-600 hover:bg-orange-700" onClick={()=>setStep(1)}>Next →</Button>
               </div>
             </div>
