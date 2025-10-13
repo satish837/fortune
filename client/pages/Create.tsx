@@ -2603,7 +2603,7 @@ export default function Create() {
           const uploadData = await uploadResponse.json();
           console.log("✅ Video uploaded successfully:", uploadData);
 
-          videoUrl = uploadData.url;
+          videoUrl = uploadData.url || uploadData.secure_url || uploadData.originalUrl || videoUrl;
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
@@ -2619,14 +2619,28 @@ export default function Create() {
           videoUrl = recordedVideoUrl;
         }
 
-        // Open video URL in new tab
-        window.open(videoUrl, "_blank", "noopener,noreferrer");
-
-        console.log("✅ Video URL opened in new tab:", videoUrl);
+        // Prefer a direct download without navigating away
+        try {
+          const fetched = await fetch(videoUrl, { mode: "cors" });
+          const finalBlob = await fetched.blob();
+          const objectUrl = URL.createObjectURL(finalBlob);
+          const a = document.createElement("a");
+          a.href = objectUrl;
+          a.download = `diwali-postcard-${Date.now()}.mp4`;
+          a.rel = "noopener";
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+          setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
+          console.log("✅ Video download triggered");
+        } catch (dlErr) {
+          console.warn("⚠️ Direct download failed, opening in new tab:", dlErr);
+          window.open(videoUrl, "_blank", "noopener,noreferrer");
+        }
       } catch (error) {
-        console.error("❌ Failed to open video:", error);
+        console.error("❌ Failed to download/open video:", error);
         // Fallback: open original video in new tab
-        window.open(recordedVideoUrl, "_blank");
+        window.open(recordedVideoUrl, "_blank", "noopener,noreferrer");
       } finally {
         setDownloading(false);
       }
@@ -3789,6 +3803,7 @@ export default function Create() {
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                 <Button
+                  type="button"
                   className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
                   onClick={recordedVideoUrl ? downloadVideo : startRecording}
                   disabled={isRecording || downloading}
@@ -3802,6 +3817,7 @@ export default function Create() {
                         : "Start Recording"}
                 </Button>
                 <Button
+                  type="button"
                   className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
                   onClick={async () => {
                     const shareUrl = cloudinaryVideoUrl || result;
@@ -3845,6 +3861,7 @@ export default function Create() {
                   {videoUploading ? "Uploading..." : "Quick Share"}
                 </Button>
                 <Button
+                  type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
                   onClick={() => {
                     setResult(null);
