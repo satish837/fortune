@@ -10,13 +10,9 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-import {
-  BarChart3,
-  LogOut,
-  Instagram,
-  Facebook,
-  MessageCircle,
-} from "lucide-react";
+import { BarChart3, LogOut } from "lucide-react";
+import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
+import { faInstagram, faFacebook, faWhatsapp } from "@fortawesome/free-brands-svg-icons";
 import { toast } from "@/hooks/use-toast";
 // Dynamic import for canvas-record (desktop only)
 let Recorder: any = null;
@@ -2950,31 +2946,44 @@ export default function Create() {
   };
 
   const copyVideoLink = async () => {
-    if (cloudinaryVideoUrl) {
-      // Track link copying
-      if (typeof window !== "undefined" && (window as any).fbq) {
-        (window as any).fbq("track", "Share", {
-          content_name: "Diwali Postcard Video",
-          content_category: "Social Sharing",
-          method: "Copy Link",
-        });
-      }
+    // Prefer optimized social URL when available; fallback to recorded local URL
+    const urlFromCloud = cloudinaryVideoUrl
+      ? buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl
+      : null;
+    const urlToCopy = urlFromCloud || recordedVideoUrl || "";
 
-      try {
-        const socialUrl =
-          buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-        await navigator.clipboard.writeText(socialUrl);
-        alert("Video link copied to clipboard! You can now paste it anywhere.");
-      } catch (error) {
-        // Fallback for older browsers
+    if (!urlToCopy) {
+      alert("Please generate a video first before copying a link.");
+      return;
+    }
+
+    // Track link copying
+    if (typeof window !== "undefined" && (window as any).fbq) {
+      (window as any).fbq("track", "Share", {
+        content_name: "Diwali Postcard Video",
+        content_category: "Social Sharing",
+        method: "Copy Link",
+      });
+    }
+
+    try {
+      if (navigator.clipboard && window.isSecureContext) {
+        await navigator.clipboard.writeText(urlToCopy);
+      } else {
         const textArea = document.createElement("textarea");
-        textArea.value = cloudinaryVideoUrl;
+        textArea.value = urlToCopy;
+        textArea.setAttribute("readonly", "");
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
         document.body.appendChild(textArea);
+        textArea.focus();
         textArea.select();
         document.execCommand("copy");
         document.body.removeChild(textArea);
-        alert("Video link copied to clipboard!");
       }
+      alert("Video link copied to clipboard!");
+    } catch (error) {
+      alert(`Failed to copy. You can manually copy this link: ${urlToCopy}`);
     }
   };
 
@@ -3715,7 +3724,7 @@ export default function Create() {
                       </p>
                     </div>
                     <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                      <p className="font-medium">📱 Maximum Compatibility</p>
+                      <p className="font-medium">�� Maximum Compatibility</p>
                       <p className="text-xs">
                         Videos are optimized for maximum compatibility (512x512,
                         15fps, H.264 Baseline)
@@ -3854,7 +3863,7 @@ export default function Create() {
                       className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <Instagram className="w-5 h-5" />
+                        <FontAwesomeIcon icon={faInstagram} className="w-5 h-5" />
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
@@ -3865,7 +3874,7 @@ export default function Create() {
                       className="h-12 bg-green-500 hover:bg-green-600 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <MessageCircle className="w-5 h-5" />
+                        <FontAwesomeIcon icon={faWhatsapp} className="w-5 h-5" />
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
@@ -3876,7 +3885,7 @@ export default function Create() {
                       className="h-12 bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <div className="flex flex-col items-center">
-                        <Facebook className="w-5 h-5" />
+                        <FontAwesomeIcon icon={faFacebook} className="w-5 h-5" />
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
