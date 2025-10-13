@@ -30,6 +30,14 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       const base64 = match[2];
       videoBuffer = Buffer.from(base64, "base64");
       originalFilename = body.fileName || originalFilename;
+    } else if (contentType.includes('application/octet-stream')) {
+      // Raw binary upload
+      const raw = req.body as Buffer | undefined;
+      if (!raw || !(raw instanceof Buffer) || raw.length === 0) {
+        return res.status(400).json({ error: 'Raw binary body required' });
+      }
+      videoBuffer = Buffer.from(raw);
+      originalFilename = req.headers['x-filename']?.toString() || originalFilename;
     } else {
       // Try to read file from multipart (if any)
       const possible = (req as any).body && ((req as any).body.video || (req as any).body.videoData);
