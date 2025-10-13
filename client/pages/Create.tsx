@@ -390,6 +390,7 @@ export default function Create() {
     hasApiKey: boolean;
   } | null>(null);
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
 
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
@@ -3819,43 +3820,7 @@ export default function Create() {
                 <Button
                   type="button"
                   className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
-                  onClick={async () => {
-                    const shareUrl = cloudinaryVideoUrl || result;
-                    const shareText = cloudinaryVideoUrl
-                      ? "Check out my festive Diwali postcard video!"
-                      : "My festive postcard";
-
-                    if (!shareUrl) {
-                      // Nothing to share
-                      try {
-                        navigator.clipboard.writeText(window.location.href);
-                      } catch (e) {}
-                      return;
-                    }
-
-                    if (
-                      navigator.share &&
-                      typeof navigator.share === "function"
-                    ) {
-                      try {
-                        await navigator.share({
-                          url: shareUrl,
-                          text: shareText,
-                          title: "Diwali Postcard",
-                        });
-                      } catch (err) {
-                        // Permission denied or user cancelled - fallback to opening link
-                        console.warn(
-                          "Navigator.share failed, falling back to open:",
-                          err,
-                        );
-                        window.open(shareUrl, "_blank");
-                      }
-                    } else {
-                      // Web Share API not available - open in new tab
-                      window.open(shareUrl, "_blank");
-                    }
-                  }}
+                  onClick={() => setShareOpen(true)}
                   disabled={videoUploading}
                 >
                   {videoUploading ? "Uploading..." : "Quick Share"}
@@ -3875,74 +3840,68 @@ export default function Create() {
                 </Button>
               </div>
 
-              {/* Social Media Sharing Section */}
-              {cloudinaryVideoUrl && (
-                <div className="mt-8 p-6 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-4 text-center">
-                    🎉 Share Your Diwali Postcard Video!
-                  </h3>
+              {/* Social Sharing Modal */}
+              <Dialog open={shareOpen} onOpenChange={setShareOpen}>
+                <DialogContent className="max-w-2xl" onOpenAutoFocus={(e) => e.preventDefault()}>
+                  <DialogHeader>
+                    <DialogTitle className="text-lg font-semibold text-orange-900">
+                      🎉 Share Your Diwali Postcard Video!
+                    </DialogTitle>
+                  </DialogHeader>
+
+                  {(cloudinaryVideoUrl || recordedVideoUrl) && (
+                    <div className="mb-4">
+                      <video
+                        controls
+                        playsInline
+                        preload="metadata"
+                        className="w-full rounded-lg shadow"
+                        style={{ maxHeight: "360px" }}
+                      >
+                        <source src={cloudinaryVideoUrl || recordedVideoUrl || ""} type="video/mp4" />
+                        Your browser does not support the video tag.
+                      </video>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 mb-4">
                     {/* Instagram */}
-                    <Button
-                      onClick={shareToInstagram}
-                      className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white"
-                    >
+                    <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">📷</span>
                         <span className="text-xs font-medium">Instagram</span>
                       </div>
                     </Button>
-
                     {/* TikTok */}
-                    <Button
-                      onClick={shareToTikTok}
-                      className="h-12 bg-black hover:bg-gray-800 text-white"
-                    >
+                    <Button onClick={shareToTikTok} className="h-12 bg-black hover:bg-gray-800 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">🎵</span>
                         <span className="text-xs font-medium">TikTok</span>
                       </div>
                     </Button>
-
                     {/* WhatsApp */}
-                    <Button
-                      onClick={shareToWhatsApp}
-                      className="h-12 bg-green-500 hover:bg-green-600 text-white"
-                    >
+                    <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 hover:bg-green-600 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">💬</span>
                         <span className="text-xs font-medium">WhatsApp</span>
                       </div>
                     </Button>
-
                     {/* Twitter */}
-                    <Button
-                      onClick={shareToTwitter}
-                      className="h-12 bg-blue-400 hover:bg-blue-500 text-white"
-                    >
+                    <Button onClick={shareToTwitter} className="h-12 bg-blue-400 hover:bg-blue-500 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">🐦</span>
                         <span className="text-xs font-medium">Twitter</span>
                       </div>
                     </Button>
-
                     {/* Facebook */}
-                    <Button
-                      onClick={shareToFacebook}
-                      className="h-12 bg-blue-600 hover:bg-blue-700 text-white"
-                    >
+                    <Button onClick={shareToFacebook} className="h-12 bg-blue-600 hover:bg-blue-700 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">👥</span>
                         <span className="text-xs font-medium">Facebook</span>
                       </div>
                     </Button>
-
                     {/* Telegram */}
-                    <Button
-                      onClick={shareToTelegram}
-                      className="h-12 bg-blue-500 hover:bg-blue-600 text-white"
-                    >
+                    <Button onClick={shareToTelegram} className="h-12 bg-blue-500 hover:bg-blue-600 text-white">
                       <div className="flex flex-col items-center">
                         <span className="text-lg">✈️</span>
                         <span className="text-xs font-medium">Telegram</span>
@@ -3950,25 +3909,19 @@ export default function Create() {
                     </Button>
                   </div>
 
-                  {/* Copy Link Button */}
                   <div className="text-center">
-                    <Button
-                      onClick={copyVideoLink}
-                      className="h-10 px-6 bg-gray-600 hover:bg-gray-700 text-white"
-                    >
+                    <Button onClick={copyVideoLink} className="h-10 px-6 bg-gray-600 hover:bg-gray-700 text-white">
                       📋 Copy Video Link
                     </Button>
                   </div>
 
-                  {/* Instructions */}
                   <div className="mt-4 text-center">
                     <p className="text-sm text-orange-700">
-                      💡 <strong>Tip:</strong> For Instagram and TikTok,
-                      download the video first, then upload it to the app!
+                      💡 <strong>Tip:</strong> For Instagram and TikTok, download the video first, then upload it to the app!
                     </p>
                   </div>
-                </div>
-              )}
+                </DialogContent>
+              </Dialog>
             </div>
           )}
         </div>
