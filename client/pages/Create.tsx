@@ -3866,7 +3866,10 @@ export default function Create() {
               {/* Social Media Sharing Section */}
               {cloudinaryVideoUrl && (
                 <div className="mt-8 p-6 bg-gradient-to-r from-orange-50 to-yellow-50 rounded-lg border border-orange-200">
-                  <h3 className="text-lg font-semibold text-orange-900 mb-4 text-center">
+                  <h3
+                    className="text-lg font-semibold text-orange-900 mb-4 text-center cursor-pointer"
+                    onClick={() => setIsShareModalOpen(true)}
+                  >
                     🎉 Share Your Diwali Postcard Video!
                   </h3>
 
