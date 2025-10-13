@@ -1902,16 +1902,6 @@ export default function Create() {
         setRecordedVideoUrl(url);
         setIsRecording(false);
         
-        // Automatically upload to Cloudinary
-        try {
-          console.log('📤 Uploading video to Cloudinary...');
-          const cloudinaryUrl = await uploadVideoToCloudinary(url);
-          setCloudinaryVideoUrl(cloudinaryUrl);
-          console.log('✅ Video uploaded to Cloudinary successfully!', cloudinaryUrl);
-        } catch (error) {
-          console.error('❌ Failed to upload video to Cloudinary:', error);
-        }
-        
         // Log the final format for debugging
         console.log(`✅ Video recorded successfully as ${mimeType}`);
         if (mimeType.includes('mp4')) {
@@ -1919,15 +1909,15 @@ export default function Create() {
         } else {
           console.log('⚠️ Non-MP4 format - May have limited social media compatibility');
         }
-        
-        // Automatically upload to Cloudinary for sharing
+
+        // Upload the recorded blob to Cloudinary (server-side) once
         try {
-          console.log('📤 Uploading video to Cloudinary...');
-          await uploadVideoToCloudinary(blob);
-          console.log('✅ Video uploaded to Cloudinary successfully!');
+          console.log('📤 Uploading recorded video blob to Cloudinary...');
+          const cloudinaryUrl = await uploadVideoToCloudinary(blob);
+          setCloudinaryVideoUrl(cloudinaryUrl);
+          console.log('✅ Video uploaded to Cloudinary successfully!', cloudinaryUrl);
         } catch (error) {
           console.error('❌ Failed to upload video to Cloudinary:', error);
-          // Don't show error to user as this is automatic
         }
       };
       
