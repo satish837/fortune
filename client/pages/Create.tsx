@@ -2606,7 +2606,13 @@ export default function Create() {
           console.log("✅ Video uploaded successfully:", uploadData);
 
           // Prefer secure_url (optimized transform) returned by API
-          videoUrl = uploadData.secure_url || uploadData.secureUrl || uploadData.url || uploadData.secureUrl || uploadData.originalUrl || recordedVideoUrl;
+          videoUrl =
+            uploadData.secure_url ||
+            uploadData.secureUrl ||
+            uploadData.url ||
+            uploadData.secureUrl ||
+            uploadData.originalUrl ||
+            recordedVideoUrl;
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
@@ -2624,22 +2630,28 @@ export default function Create() {
 
         // Attempt to download the video by fetching it and creating a blob URL
         try {
-          const resp = await fetch(videoUrl, { mode: 'cors' });
-          if (!resp.ok) throw new Error('Failed to fetch video for download');
+          const resp = await fetch(videoUrl, { mode: "cors" });
+          if (!resp.ok) throw new Error("Failed to fetch video for download");
           const blob = await resp.blob();
 
           // Ensure blob is an MP4; if not, try converting via Cloudinary fallback
-          const isMp4 = blob.type === 'video/mp4' || (blob.type && blob.type.includes('mp4'));
+          const isMp4 =
+            blob.type === "video/mp4" ||
+            (blob.type && blob.type.includes("mp4"));
           let downloadBlob = blob;
 
           if (!isMp4 && cloudinaryVideoUrl) {
             // If blob not mp4, try to fetch the Cloudinary optimized MP4 directly
             try {
-              const socialUrl = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-              const resp2 = await fetch(socialUrl, { mode: 'cors' });
+              const socialUrl =
+                buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+              const resp2 = await fetch(socialUrl, { mode: "cors" });
               if (resp2.ok) {
                 const blob2 = await resp2.blob();
-                if (blob2.type === 'video/mp4' || (blob2.type && blob2.type.includes('mp4'))) {
+                if (
+                  blob2.type === "video/mp4" ||
+                  (blob2.type && blob2.type.includes("mp4"))
+                ) {
                   downloadBlob = blob2;
                 }
               }
@@ -2649,7 +2661,7 @@ export default function Create() {
           }
 
           const urlObj = URL.createObjectURL(downloadBlob);
-          const link = document.createElement('a');
+          const link = document.createElement("a");
           // Derive filename
           const parsed = (() => {
             try {
@@ -2658,17 +2670,25 @@ export default function Create() {
               return null;
             }
           })();
-          const filename = parsed ? (parsed.pathname.split('/').pop() || `diwali-postcard-${Date.now()}.mp4`) : `diwali-postcard-${Date.now()}.mp4`;
+          const filename = parsed
+            ? parsed.pathname.split("/").pop() ||
+              `diwali-postcard-${Date.now()}.mp4`
+            : `diwali-postcard-${Date.now()}.mp4`;
           link.href = urlObj;
-          link.download = filename.endsWith('.mp4') ? filename : `${filename}.mp4`;
+          link.download = filename.endsWith(".mp4")
+            ? filename
+            : `${filename}.mp4`;
           document.body.appendChild(link);
           link.click();
           document.body.removeChild(link);
           URL.revokeObjectURL(urlObj);
-          console.log('✅ Video download started for:', filename);
+          console.log("✅ Video download started for:", filename);
         } catch (downloadErr) {
-          console.warn('Download failed, falling back to opening in new tab:', downloadErr);
-          window.open(videoUrl, '_blank', 'noopener,noreferrer');
+          console.warn(
+            "Download failed, falling back to opening in new tab:",
+            downloadErr,
+          );
+          window.open(videoUrl, "_blank", "noopener,noreferrer");
         }
       } catch (error) {
         console.error("❌ Failed to open video:", error);
@@ -3217,7 +3237,6 @@ export default function Create() {
                 </p>
               </div>
               <div className="w-full md:w-48 flex gap-2">
-                
                 <Button
                   disabled={!photoData}
                   className="flex-1 h-12 bg-orange-600 hover:bg-orange-700"
@@ -3960,30 +3979,77 @@ export default function Create() {
                   </div>
 
                   {/* Share Modal (opens when Quick Share or header is clicked) */}
-                  <Dialog open={isShareModalOpen} onOpenChange={setIsShareModalOpen}>
+                  <Dialog
+                    open={isShareModalOpen}
+                    onOpenChange={setIsShareModalOpen}
+                  >
                     <DialogContent className="max-w-lg">
                       <DialogHeader>
-                        <DialogTitle className="text-orange-900">Share your Diwali Postcard</DialogTitle>
+                        <DialogTitle className="text-orange-900">
+                          Share your Diwali Postcard
+                        </DialogTitle>
                       </DialogHeader>
 
                       <div className="mb-4">
-                        <video controls className="w-full rounded-lg" preload="metadata">
-                          <source src={cloudinaryVideoUrl || recordedVideoUrl} type="video/mp4" />
+                        <video
+                          controls
+                          className="w-full rounded-lg"
+                          preload="metadata"
+                        >
+                          <source
+                            src={cloudinaryVideoUrl || recordedVideoUrl}
+                            type="video/mp4"
+                          />
                           Your browser does not support the video tag.
                         </video>
                       </div>
 
                       <div className="grid grid-cols-3 gap-3 mb-4">
-                        <Button onClick={shareToWhatsApp} className="h-12 bg-green-500 text-white">WhatsApp</Button>
-                        <Button onClick={shareToTwitter} className="h-12 bg-blue-400 text-white">Twitter</Button>
-                        <Button onClick={shareToFacebook} className="h-12 bg-blue-600 text-white">Facebook</Button>
-                        <Button onClick={shareToTelegram} className="h-12 bg-blue-500 text-white">Telegram</Button>
-                        <Button onClick={shareToInstagram} className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white">Instagram</Button>
-                        <Button onClick={shareToTikTok} className="h-12 bg-black text-white">TikTok</Button>
+                        <Button
+                          onClick={shareToWhatsApp}
+                          className="h-12 bg-green-500 text-white"
+                        >
+                          WhatsApp
+                        </Button>
+                        <Button
+                          onClick={shareToTwitter}
+                          className="h-12 bg-blue-400 text-white"
+                        >
+                          Twitter
+                        </Button>
+                        <Button
+                          onClick={shareToFacebook}
+                          className="h-12 bg-blue-600 text-white"
+                        >
+                          Facebook
+                        </Button>
+                        <Button
+                          onClick={shareToTelegram}
+                          className="h-12 bg-blue-500 text-white"
+                        >
+                          Telegram
+                        </Button>
+                        <Button
+                          onClick={shareToInstagram}
+                          className="h-12 bg-gradient-to-r from-purple-500 to-pink-500 text-white"
+                        >
+                          Instagram
+                        </Button>
+                        <Button
+                          onClick={shareToTikTok}
+                          className="h-12 bg-black text-white"
+                        >
+                          TikTok
+                        </Button>
                       </div>
 
                       <div className="text-right">
-                        <Button onClick={() => setIsShareModalOpen(false)} className="h-10">Close</Button>
+                        <Button
+                          onClick={() => setIsShareModalOpen(false)}
+                          className="h-10"
+                        >
+                          Close
+                        </Button>
                       </div>
                     </DialogContent>
                   </Dialog>
