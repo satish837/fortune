@@ -15,7 +15,9 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
     const apiSecret = process.env.CLOUDINARY_API_SECRET;
 
     if (!cloudName || !apiKey || !apiSecret) {
-      return res.status(500).json({ error: "Cloudinary configuration missing" });
+      return res
+        .status(500)
+        .json({ error: "Cloudinary configuration missing" });
     }
 
     const contentType = (req.headers["content-type"] || "").toString();
@@ -26,7 +28,9 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       const body = req.body || {};
       const dataUrl = body.videoData || body.video || body.videoDataUrl;
       if (!dataUrl || typeof dataUrl !== "string") {
-        return res.status(400).json({ error: "videoData (data URL) is required in JSON body" });
+        return res
+          .status(400)
+          .json({ error: "videoData (data URL) is required in JSON body" });
       }
       const match = dataUrl.match(/^data:(.+);base64,(.+)$/);
       if (!match) return res.status(400).json({ error: "Invalid data URL" });
@@ -39,10 +43,18 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
         return res.status(400).json({ error: "Raw binary body required" });
       }
       videoBuffer = Buffer.from(raw);
-      originalFilename = (req.headers["x-filename"] || originalFilename).toString();
+      originalFilename = (
+        req.headers["x-filename"] || originalFilename
+      ).toString();
     } else {
-      const possible = (req as any).body && ((req as any).body.video || (req as any).body.videoData);
-      if (possible && typeof possible === "string" && possible.startsWith("data:")) {
+      const possible =
+        (req as any).body &&
+        ((req as any).body.video || (req as any).body.videoData);
+      if (
+        possible &&
+        typeof possible === "string" &&
+        possible.startsWith("data:")
+      ) {
         const match = possible.match(/^data:(.+);base64,(.+)$/);
         if (!match) return res.status(400).json({ error: "Invalid data URL" });
         videoBuffer = Buffer.from(match[2], "base64");
@@ -57,7 +69,10 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
     const filename = `festive-postcard-${timestamp}`;
     const publicId = filename;
 
-    console.log("📤 Uploading to Cloudinary via SDK (upload_stream)...", { publicId, size: videoBuffer.length });
+    console.log("📤 Uploading to Cloudinary via SDK (upload_stream)...", {
+      publicId,
+      size: videoBuffer.length,
+    });
 
     const uploadResult: any = await new Promise((resolve, reject) => {
       const uploadStream = cloudinary.v2.uploader.upload_stream(
@@ -69,7 +84,7 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
         (error, result) => {
           if (error) return reject(error);
           resolve(result);
-        }
+        },
       );
 
       const readable = new Readable();
@@ -83,14 +98,28 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       throw new Error("Cloudinary upload returned no result");
     }
 
-    const versionSegment = uploadResult.version ? `/v${uploadResult.version}` : '';
-    const transform = 'f_mp4,q_auto:best';
-    const baseName = (uploadResult.public_id || '').split('/').pop();
+    const versionSegment = uploadResult.version
+      ? `/v${uploadResult.version}`
+      : "";
+    const transform = "f_mp4,q_auto:best";
+    const baseName = (uploadResult.public_id || "").split("/").pop();
     const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${baseName}.mp4`;
 
-    res.status(200).json({ success: true, secure_url: optimizedUrl, public_id: uploadResult.public_id, originalUrl: uploadResult.secure_url });
+    res
+      .status(200)
+      .json({
+        success: true,
+        secure_url: optimizedUrl,
+        public_id: uploadResult.public_id,
+        originalUrl: uploadResult.secure_url,
+      });
   } catch (error: any) {
     console.error("❌ Error in upload-video route:", error);
-    res.status(500).json({ error: "Failed to upload video", details: error?.message || String(error) });
+    res
+      .status(500)
+      .json({
+        error: "Failed to upload video",
+        details: error?.message || String(error),
+      });
   }
 };
