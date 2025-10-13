@@ -1410,9 +1410,9 @@ export default function Create() {
             // Clear canvas
             ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-            // Calculate centered position for square canvas
-            const offsetX = (whatsappSize - rect.width * scale) / 2;
-            const offsetY = (whatsappSize - rect.height * scale) / 2;
+            // Calculate centered position for 9:16 canvas
+            const offsetX = (targetWidth - rect.width * scale) / 2;
+            const offsetY = (targetHeight - rect.height * scale) / 2;
 
             // Draw the background video
             if (
@@ -2177,9 +2177,9 @@ export default function Create() {
               // Clear canvas
               ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-              // Calculate centered position for square canvas
-              const offsetX = (whatsappSize - rect.width * scale) / 2;
-              const offsetY = (whatsappSize - rect.height * scale) / 2;
+              // Calculate centered position for 9:16 canvas
+              const offsetX = (targetWidth - rect.width * scale) / 2;
+              const offsetY = (targetHeight - rect.height * scale) / 2;
 
               // Draw the background video
               if (
