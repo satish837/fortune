@@ -54,7 +54,8 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
     }
 
     const timestamp = Math.round(new Date().getTime() / 1000);
-    const publicId = `diwali-postcards/videos/festive-postcard-${timestamp}`;
+    const filename = `festive-postcard-${timestamp}`;
+    const publicId = filename;
 
     console.log("📤 Uploading to Cloudinary via SDK (upload_stream)...", { publicId, size: videoBuffer.length });
 
