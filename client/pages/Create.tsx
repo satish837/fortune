@@ -2619,10 +2619,27 @@ export default function Create() {
           videoUrl = recordedVideoUrl;
         }
 
-        // Open video URL in new tab
-        window.open(videoUrl, "_blank", "noopener,noreferrer");
-
-        console.log("✅ Video URL opened in new tab:", videoUrl);
+        // Attempt to download the video by fetching it and creating a blob URL
+        try {
+          const resp = await fetch(videoUrl, { mode: 'cors' });
+          if (!resp.ok) throw new Error('Failed to fetch video for download');
+          const blob = await resp.blob();
+          const urlObj = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          // Derive filename
+          const parsed = (() => { try { return new URL(videoUrl); } catch(e) { return null; } })();
+          const filename = parsed ? (parsed.pathname.split('/').pop() || `diwali-postcard-${Date.now()}.mp4`) : `diwali-postcard-${Date.now()}.mp4`;
+          link.href = urlObj;
+          link.download = filename.endsWith('.mp4') ? filename : `${filename}.mp4`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+          URL.revokeObjectURL(urlObj);
+          console.log('✅ Video download started for:', filename);
+        } catch (downloadErr) {
+          console.warn('Download failed, falling back to opening in new tab:', downloadErr);
+          window.open(videoUrl, '_blank', 'noopener,noreferrer');
+        }
       } catch (error) {
         console.error("❌ Failed to open video:", error);
         // Fallback: open original video in new tab
