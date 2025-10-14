@@ -3880,14 +3880,7 @@ export default function Create() {
                         ? "Download Video"
                         : "Start Recording"}
                 </Button>
-                <Button
-                  type="button"
-                  className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
-                  onClick={() => setShareOpen(true)}
-                  disabled={videoUploading}
-                >
-                  {videoUploading ? "Uploading..." : "Quick Share"}
-                </Button>
+                
                 <Button
                   type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
