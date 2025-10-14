@@ -2798,6 +2798,7 @@ export default function Create() {
         const url = data.secure_url || data.originalUrl || data.secureUrl;
         console.log("✅ Video uploaded to Cloudinary (server):", url);
         setCloudinaryVideoUrl(url);
+        updateRecordedMimeType("video/mp4");
         return url;
       } catch (serverErr) {
         console.warn(
