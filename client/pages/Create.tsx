@@ -2593,8 +2593,11 @@ export default function Create() {
             ctx.fillStyle = "rgba(0, 0, 0, 0)";
             ctx.fillRect(0, rect.height - 50, rect.width, 50);
 
+            const baseFontSize = isMobile ? 16 : 18;
+            const lineSpacing = isMobile ? 22 : 28;
+
             ctx.fillStyle = "white";
-            ctx.font = "bold 18px Arial";
+            ctx.font = getGreetingFont(baseFontSize);
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
@@ -2627,13 +2630,12 @@ export default function Create() {
               lines.push(currentLine);
             }
 
+            const baseY =
+              rect.height - 30 - ((lines.length - 1) / 2) * lineSpacing;
+
             // Draw each line
             lines.forEach((line, index) => {
-              ctx.fillText(
-                line,
-                rect.width / 2,
-                rect.height - 30 + (index - lines.length / 2) * 28,
-              );
+              ctx.fillText(line, rect.width / 2, baseY + index * lineSpacing);
             });
 
             ctx.restore();
