@@ -1184,10 +1184,6 @@ export default function Create() {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // Calculate centered position
-          const offsetX = (targetWidth - rect.width * scale) / 2;
-          const offsetY = (targetHeight - rect.height * scale) / 2;
-
           // Draw the background video
           if (
             backgroundVideo.videoWidth > 0 &&
@@ -1197,8 +1193,8 @@ export default function Create() {
               backgroundVideo,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
           }
 
@@ -1210,8 +1206,8 @@ export default function Create() {
             generatedImg,
             offsetX,
             offsetY,
-            rect.width * scale,
-            rect.height * scale,
+            drawWidth,
+            drawHeight,
           );
 
           // Draw the photo frame
@@ -1222,8 +1218,8 @@ export default function Create() {
             photoFrameImg,
             offsetX,
             offsetY,
-            rect.width * scale,
-            rect.height * scale,
+            drawWidth,
+            drawHeight,
           );
 
           // Draw the greeting text
@@ -1232,7 +1228,7 @@ export default function Create() {
             ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+            ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
           }
         };
 
@@ -2167,7 +2163,7 @@ export default function Create() {
       );
     } catch (error) {
       console.error(
-        "�� Canvas recorder failed, falling back to MediaRecorder:",
+        "❌ Canvas recorder failed, falling back to MediaRecorder:",
         error,
       );
       await initializeMobileVideoRecorder(
