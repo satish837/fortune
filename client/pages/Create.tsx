@@ -262,9 +262,10 @@ const LOADER_STEP_FADE_MS = 700;
 const PROGRESS_INTERMEDIATE_DURATION_MS = 3000;
 const PROGRESS_FINAL_DURATION_MS = 2500;
 
-const delay = (ms: number) => new Promise<void>((resolve) => {
-  setTimeout(resolve, ms);
-});
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const GENERATION_STEPS = [
   "North India glows with Malpua, mathris, Pakode and festive warmth!",
@@ -1202,25 +1203,13 @@ export default function Create() {
           const generatedImg = new Image();
           generatedImg.crossOrigin = "anonymous";
           generatedImg.src = result;
-          ctx.drawImage(
-            generatedImg,
-            offsetX,
-            offsetY,
-            drawWidth,
-            drawHeight,
-          );
+          ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
 
           // Draw the photo frame
           const photoFrameImg = new Image();
           photoFrameImg.crossOrigin = "anonymous";
           photoFrameImg.src = "/photo-frame-story.png";
-          ctx.drawImage(
-            photoFrameImg,
-            offsetX,
-            offsetY,
-            drawWidth,
-            drawHeight,
-          );
+          ctx.drawImage(photoFrameImg, offsetX, offsetY, drawWidth, drawHeight);
 
           // Draw the greeting text
           if (greeting) {
@@ -1312,7 +1301,9 @@ export default function Create() {
           });
 
           if (optimizedBlob.size > 16 * 1024 * 1024) {
-            console.warn("⚠️ Video too large after optimization, using original");
+            console.warn(
+              "⚠️ Video too large after optimization, using original",
+            );
             resolve(URL.createObjectURL(videoBlob));
           } else {
             resolve(optimizedUrl);
@@ -1868,13 +1859,7 @@ export default function Create() {
       console.log("📱 Mobile video recording started");
 
       // Start the animation loop
-      startMobileAnimationLoop(
-        canvas,
-        ctx,
-        backgroundVideo,
-        rect,
-        metrics,
-      );
+      startMobileAnimationLoop(canvas, ctx, backgroundVideo, rect, metrics);
     } catch (error) {
       console.error("❌ Mobile video recorder initialization failed:", error);
       setVideoGenerationError(
@@ -3777,7 +3762,6 @@ export default function Create() {
                   </div>
                 </div>
               </div>
-              
 
               {/* Upload Progress Indicator */}
               {downloading && (
@@ -3816,7 +3800,7 @@ export default function Create() {
                         ? "Download Video"
                         : "Start Recording"}
                 </Button>
-                
+
                 <Button
                   type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
