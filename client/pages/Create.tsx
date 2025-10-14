@@ -246,7 +246,7 @@ const BACKGROUNDS = [
     id: "4",
     name: "Diwali Sparkle",
     video: "/background/4.mp4",
-    fallback: "��",
+    fallback: "����",
   },
   { id: "5", name: "Festive Joy", video: "/background/5.mp4", fallback: "🎉" },
 ];
@@ -518,6 +518,59 @@ export default function Create() {
     if (lowerMime.includes("avi")) return "avi";
     return "mp4";
   };
+
+  const loadHtmlImage = useCallback((src: string) => {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+      img.src = src;
+    });
+  }, []);
+
+  const waitForVideoFrame = useCallback((video: HTMLVideoElement) => {
+    return new Promise<void>((resolve, reject) => {
+      if (!video) {
+        reject(new Error("Video element not found"));
+        return;
+      }
+
+      function cleanup() {
+        video.removeEventListener("loadeddata", handleLoadedData);
+        video.removeEventListener("error", handleError);
+      }
+
+      function handleLoadedData() {
+        cleanup();
+        resolve();
+      }
+
+      function handleError() {
+        cleanup();
+        reject(new Error("Failed to load video frame"));
+      }
+
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve();
+        return;
+      }
+
+      video.addEventListener("loadeddata", handleLoadedData, { once: true });
+      video.addEventListener("error", handleError, { once: true });
+
+      try {
+        if (video.paused) {
+          void video.play().catch(() => {
+            // playback may be blocked; rely on loadeddata
+          });
+        }
+        video.load();
+      } catch (error) {
+        console.warn("Video load call failed:", error);
+      }
+    });
+  }, []);
 
   const getGreetingFont = useCallback(
     (baseSize = 20) => {
@@ -2260,7 +2313,7 @@ export default function Create() {
         cancelAnimationFrame(animationId);
         animationId = null;
       }
-      console.log("🧹 Animation loop cleaned up");
+      console.log("���� Animation loop cleaned up");
     };
 
     // Store cleanup function for later use
@@ -2963,7 +3016,7 @@ export default function Create() {
       document.body.removeChild(link);
       console.log("✅ Video download triggered");
     } catch (error) {
-      console.warn("��️ Direct download failed, opening in new tab:", error);
+      console.warn("⚠️ Direct download failed, opening in new tab:", error);
       window.open(href, "_blank", "noopener,noreferrer");
     } finally {
       if (shouldRevoke) {
@@ -3113,7 +3166,7 @@ export default function Create() {
       }
 
       const message =
-        "Check out my festive Diwali postcard video! 🎆��� #Diwali #Festive #Postcard";
+        "Check out my festive Diwali postcard video! 🎆✨ #Diwali #Festive #Postcard";
       const socialUrl =
         buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(socialUrl)}`;
@@ -3322,7 +3375,7 @@ export default function Create() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-red-50 to-orange-50 flex items-center justify-center p-4">
         <div className="text-center max-w-md">
-          <div className="text-6xl mb-4">🚨</div>
+          <div className="text-6xl mb-4">���</div>
           <h1 className="text-2xl font-bold text-red-700 mb-4">Page Crashed</h1>
           <p className="text-red-600 mb-6">
             An unexpected error occurred during video generation. This might be
