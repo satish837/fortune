@@ -468,7 +468,40 @@ export default function Create() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordedMimeTypeRef = useRef<string>("video/mp4");
   const manualLoaderControlRef = useRef(false);
+
+  const updateRecordedMimeType = useCallback((mime?: string | null) => {
+    const normalized =
+      typeof mime === "string" && mime.trim().length > 0 ? mime : "video/mp4";
+    recordedMimeTypeRef.current = normalized;
+  }, []);
+
+  const getFileExtensionFromMime = (mime?: string | null) => {
+    if (!mime) return "mp4";
+    const lowerMime = mime.toLowerCase();
+    if (lowerMime.includes("webm")) return "webm";
+    if (lowerMime.includes("ogg")) return "ogg";
+    if (lowerMime.includes("3gpp")) return "3gp";
+    if (lowerMime.includes("quicktime")) return "mov";
+    if (lowerMime.includes("matroska") || lowerMime.includes("mkv")) {
+      return "mkv";
+    }
+    if (lowerMime.includes("avi")) return "avi";
+    return "mp4";
+  };
+
+  const getGreetingFont = useCallback(
+    (baseSize = 20) => {
+      const minimumSize = 14;
+      const adjustedSize = Math.max(
+        minimumSize,
+        Math.round(baseSize * (isMobile ? 0.8 : 1)),
+      );
+      return `bold ${adjustedSize}px Arial`;
+    },
+    [isMobile],
+  );
 
   const selectedBackground = useMemo(
     () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
@@ -1161,6 +1194,7 @@ export default function Create() {
       return new Promise((resolve) => {
         mediaRecorder.onstop = () => {
           const videoBlob = new Blob(chunks, { type: "video/mp4" });
+          updateRecordedMimeType(videoBlob.type);
           const videoUrl = URL.createObjectURL(videoBlob);
 
           console.log("✅ Fallback video generated:", {
@@ -1214,7 +1248,7 @@ export default function Create() {
           // Draw the greeting text
           if (greeting) {
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 20px Arial";
+            ctx.font = getGreetingFont();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
@@ -1289,6 +1323,7 @@ export default function Create() {
 
         mediaRecorder.onstop = () => {
           const optimizedBlob = new Blob(chunks, { type: "video/mp4" });
+          updateRecordedMimeType(optimizedBlob.type);
           const optimizedUrl = URL.createObjectURL(optimizedBlob);
 
           console.log("📱 Optimized video:", {
@@ -1302,7 +1337,7 @@ export default function Create() {
 
           if (optimizedBlob.size > 16 * 1024 * 1024) {
             console.warn(
-              "⚠️ Video too large after optimization, using original",
+              "⚠�� Video too large after optimization, using original",
             );
             resolve(URL.createObjectURL(videoBlob));
           } else {
@@ -1516,7 +1551,7 @@ export default function Create() {
             // Draw the greeting text
             if (greeting) {
               ctx.fillStyle = "#ffffff";
-              ctx.font = "bold 20px Arial";
+              ctx.font = getGreetingFont();
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
@@ -1545,6 +1580,7 @@ export default function Create() {
             const videoBlob = new Blob([videoData as BlobPart], {
               type: "video/mp4",
             });
+            updateRecordedMimeType(videoBlob.type);
 
             console.log("✅ Video recording completed:", {
               size: videoBlob.size,
@@ -1576,6 +1612,7 @@ export default function Create() {
               const videoBlob = new Blob([videoData as BlobPart], {
                 type: "video/mp4",
               });
+              updateRecordedMimeType(videoBlob.type);
 
               console.log("✅ Video recording completed (timeout):", {
                 size: videoBlob.size,
@@ -1697,6 +1734,8 @@ export default function Create() {
         // If it's not a Blob, create one
         videoBlob = new Blob([videoData as BlobPart], { type: "video/mp4" });
       }
+
+      updateRecordedMimeType(videoBlob.type);
 
       // Validate video compatibility
       const isCompatible = validateVideoCompatibility(videoBlob);
@@ -1978,7 +2017,7 @@ export default function Create() {
               // Draw greeting text
               if (greeting) {
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 20px Arial";
+                ctx.font = getGreetingFont();
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
@@ -2276,7 +2315,7 @@ export default function Create() {
               // Draw the greeting text
               if (greeting) {
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 20px Arial";
+                ctx.font = getGreetingFont();
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
@@ -2404,6 +2443,8 @@ export default function Create() {
         console.warn("❌ No supported video format found, using default");
       }
 
+      updateRecordedMimeType(mimeType);
+
       // Show user warning if MP4 is not supported
       if (!mp4Supported) {
         console.warn(
@@ -2425,6 +2466,7 @@ export default function Create() {
 
       mediaRecorder.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        updateRecordedMimeType(blob.type || mimeType);
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         setIsRecording(false);
@@ -2676,7 +2718,7 @@ export default function Create() {
             recordedChunksRef.current.length > 0
           ) {
             videoBlob = new Blob(recordedChunksRef.current, {
-              type: "video/mp4",
+              type: recordedMimeTypeRef.current || "video/mp4",
             });
           }
         }
@@ -2685,6 +2727,8 @@ export default function Create() {
       }
 
       if (!videoBlob) throw new Error("Unable to obtain video blob for upload");
+
+      updateRecordedMimeType(videoBlob.type || recordedMimeTypeRef.current);
 
       console.log("🔧 Video details:", {
         videoSize: videoBlob.size,
@@ -2698,10 +2742,13 @@ export default function Create() {
           throw new Error("Cloudinary unsigned preset not configured");
         }
         const fd = new FormData();
+        const unsignedExtension = getFileExtensionFromMime(
+          (videoBlob as Blob).type || recordedMimeTypeRef.current,
+        );
         fd.append(
           "file",
           videoBlob as Blob,
-          `festive-postcard-${Date.now()}.mp4`,
+          `festive-postcard-${Date.now()}.${unsignedExtension}`,
         );
         fd.append("upload_preset", cloudinaryConfig.uploadPreset);
         fd.append("resource_type", "video");
@@ -2720,6 +2767,7 @@ export default function Create() {
         if (!url) throw new Error("Unsigned upload returned no URL");
         console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
         setCloudinaryVideoUrl(url);
+        updateRecordedMimeType("video/mp4");
         return url;
       };
 
@@ -2727,11 +2775,14 @@ export default function Create() {
       try {
         const arrayBuffer = await videoBlob.arrayBuffer();
         console.log("📤 Uploading raw binary to server-side signed upload...");
+        const filenameExtension = getFileExtensionFromMime(
+          videoBlob.type || recordedMimeTypeRef.current,
+        );
         const uploadResponse = await fetch("/api/upload-video", {
           method: "POST",
           headers: {
             "Content-Type": "application/octet-stream",
-            "x-filename": `festive-postcard-${Date.now()}.mp4`,
+            "x-filename": `festive-postcard-${Date.now()}.${filenameExtension}`,
           },
           body: arrayBuffer,
         });
@@ -2749,6 +2800,7 @@ export default function Create() {
         const url = data.secure_url || data.originalUrl || data.secureUrl;
         console.log("✅ Video uploaded to Cloudinary (server):", url);
         setCloudinaryVideoUrl(url);
+        updateRecordedMimeType("video/mp4");
         return url;
       } catch (serverErr) {
         console.warn(
@@ -2800,7 +2852,9 @@ export default function Create() {
               recordedChunksRef.current &&
               recordedChunksRef.current.length > 0
             ) {
-              blob = new Blob(recordedChunksRef.current, { type: "video/mp4" });
+              blob = new Blob(recordedChunksRef.current, {
+                type: recordedMimeTypeRef.current || "video/mp4",
+              });
             }
           }
 
@@ -2808,8 +2862,13 @@ export default function Create() {
             throw new Error("Unable to obtain video blob for upload");
           }
 
+          updateRecordedMimeType(blob.type || recordedMimeTypeRef.current);
+
           // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
+          const uploadFilenameExtension = getFileExtensionFromMime(
+            blob.type || recordedMimeTypeRef.current,
+          );
           console.log("🔧 Upload Details:", {
             videoSize: blob.size,
             videoType: blob.type,
@@ -2822,7 +2881,7 @@ export default function Create() {
               method: "POST",
               headers: {
                 "Content-Type": "application/octet-stream",
-                "x-filename": `festive-postcard-${Date.now()}.mp4`,
+                "x-filename": `festive-postcard-${Date.now()}.${uploadFilenameExtension}`,
               },
               body: arrayBuffer,
             });
@@ -2856,6 +2915,7 @@ export default function Create() {
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
+          updateRecordedMimeType("video/mp4");
 
           console.log(
             "✅ Video processed through Cloudinary MP4 converter:",
@@ -2888,7 +2948,7 @@ export default function Create() {
             recordedChunksRef.current.length > 0
           ) {
             finalBlob = new Blob(recordedChunksRef.current, {
-              type: "video/mp4",
+              type: recordedMimeTypeRef.current || "video/mp4",
             });
           }
 
@@ -2897,11 +2957,16 @@ export default function Create() {
             throw new Error("Could not obtain downloadable blob");
           }
 
+          const finalMime =
+            finalBlob.type || recordedMimeTypeRef.current || "video/mp4";
+          updateRecordedMimeType(finalMime);
+          const finalExtension = getFileExtensionFromMime(finalMime);
           const objectUrl = URL.createObjectURL(finalBlob);
           const a = document.createElement("a");
           a.href = objectUrl;
-          a.download = `diwali-postcard-${Date.now()}.mp4`;
+          a.download = `diwali-postcard-${Date.now()}.${finalExtension}`;
           a.rel = "noopener";
+          a.type = finalMime;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
