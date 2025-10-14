@@ -4146,6 +4146,9 @@ export default function Create() {
                     setRecordedVideoUrl(null);
                     setRecordedVideoBlob(null);
                     setCloudinaryVideoUrl(null);
+                    setVideoGenerationError(null);
+                    setImageDownloadError(null);
+                    setImageDownloading(false);
                   }}
                 >
                   Generate again
