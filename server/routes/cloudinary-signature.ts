@@ -59,14 +59,9 @@ export const handleCloudinarySignature: RequestHandler = (req, res) => {
       .map((key) => `${key}=${params[key]}`)
       .join("&");
 
-    const toSign = signatureBase
-      ? `${signatureBase}${apiSecret}`
-      : apiSecret;
+    const toSign = signatureBase ? `${signatureBase}${apiSecret}` : apiSecret;
 
-    const signature = crypto
-      .createHash("sha1")
-      .update(toSign)
-      .digest("hex");
+    const signature = crypto.createHash("sha1").update(toSign).digest("hex");
 
     res.status(200).json({
       cloudName,

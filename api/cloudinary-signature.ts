@@ -23,7 +23,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     const parsedBody =
       typeof rawBody === "string" && rawBody.trim()
         ? JSON.parse(rawBody)
-        : rawBody ?? {};
+        : (rawBody ?? {});
 
     const {
       folder = DEFAULT_FOLDER,
@@ -65,14 +65,9 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
       .map((key) => `${key}=${params[key]}`)
       .join("&");
 
-    const toSign = signatureBase
-      ? `${signatureBase}${apiSecret}`
-      : apiSecret;
+    const toSign = signatureBase ? `${signatureBase}${apiSecret}` : apiSecret;
 
-    const signature = crypto
-      .createHash("sha1")
-      .update(toSign)
-      .digest("hex");
+    const signature = crypto.createHash("sha1").update(toSign).digest("hex");
 
     res.status(200).json({
       cloudName,

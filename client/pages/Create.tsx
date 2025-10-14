@@ -2830,11 +2830,15 @@ export default function Create() {
           uploadJson,
           signaturePayload.cloudName,
         );
-        const finalUrl = optimizedUrl || uploadJson.secure_url || uploadJson.url;
+        const finalUrl =
+          optimizedUrl || uploadJson.secure_url || uploadJson.url;
         if (!finalUrl) {
           throw new Error("Signed direct upload returned no URL");
         }
-        console.log("✅ Video uploaded to Cloudinary (direct signed):", finalUrl);
+        console.log(
+          "✅ Video uploaded to Cloudinary (direct signed):",
+          finalUrl,
+        );
         setCloudinaryVideoUrl(finalUrl);
         updateRecordedMimeType("video/mp4");
         return finalUrl;
