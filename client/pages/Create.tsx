@@ -2632,35 +2632,72 @@ export default function Create() {
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
       });
 
-      // Always use server-side signed upload to avoid CORS/stream issues
-      // Send raw binary to server to avoid body-stream issues
-      const arrayBuffer = await videoBlob.arrayBuffer();
-      console.log("📤 Uploading raw binary to server-side signed upload...");
-
-      const uploadResponse = await fetch("/api/upload-video", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/octet-stream",
-          "x-filename": `festive-postcard-${Date.now()}.mp4`,
-        },
-        body: arrayBuffer,
-      });
-
-      console.log("📡 Upload response status:", uploadResponse.status);
-
-      if (!uploadResponse.ok) {
-        const errorText = await uploadResponse.text();
-        console.error("❌ Upload failed:", errorText);
-        throw new Error(
-          `Cloudinary upload failed: ${uploadResponse.status} - ${errorText}`,
+      // Helper: unsigned client-side upload fallback (avoids server body-size limits)
+      const tryUnsignedUpload = async (): Promise<string> => {
+        if (!cloudinaryConfig?.cloudName || !cloudinaryConfig?.uploadPreset) {
+          throw new Error("Cloudinary unsigned preset not configured");
+        }
+        const fd = new FormData();
+        fd.append(
+          "file",
+          videoBlob as Blob,
+          `festive-postcard-${Date.now()}.mp4`,
         );
-      }
+        fd.append("upload_preset", cloudinaryConfig.uploadPreset);
+        fd.append("resource_type", "video");
+        const unsignedRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/video/upload`,
+          { method: "POST", body: fd },
+        );
+        if (!unsignedRes.ok) {
+          const txt = await unsignedRes.text().catch(() => "");
+          throw new Error(
+            `Unsigned upload failed: ${unsignedRes.status} - ${txt}`,
+          );
+        }
+        const json = await unsignedRes.json();
+        const url = json.secure_url || json.url;
+        if (!url) throw new Error("Unsigned upload returned no URL");
+        console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
+        setCloudinaryVideoUrl(url);
+        return url;
+      };
 
-      const data = await uploadResponse.json();
-      const url = data.secure_url || data.originalUrl || data.secureUrl;
-      console.log("✅ Video uploaded to Cloudinary (server):", url);
-      setCloudinaryVideoUrl(url);
-      return url;
+      // First try server-side signed upload (preferred)
+      try {
+        const arrayBuffer = await videoBlob.arrayBuffer();
+        console.log("📤 Uploading raw binary to server-side signed upload...");
+        const uploadResponse = await fetch("/api/upload-video", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/octet-stream",
+            "x-filename": `festive-postcard-${Date.now()}.mp4`,
+          },
+          body: arrayBuffer,
+        });
+        console.log("📡 Upload response status:", uploadResponse.status);
+        if (!uploadResponse.ok) {
+          const errorText = await uploadResponse.text().catch(() => "");
+          console.warn(
+            "❌ Server upload failed, trying unsigned fallback:",
+            errorText,
+          );
+          const unsignedUrl = await tryUnsignedUpload();
+          return unsignedUrl;
+        }
+        const data = await uploadResponse.json();
+        const url = data.secure_url || data.originalUrl || data.secureUrl;
+        console.log("✅ Video uploaded to Cloudinary (server):", url);
+        setCloudinaryVideoUrl(url);
+        return url;
+      } catch (serverErr) {
+        console.warn(
+          "⚠️ Server upload error, trying unsigned fallback:",
+          serverErr,
+        );
+        const unsignedUrl = await tryUnsignedUpload();
+        return unsignedUrl;
+      }
     } catch (error) {
       console.error("❌ Error uploading video to Cloudinary:", error);
       setUploadError(error instanceof Error ? error.message : "Upload failed");
