@@ -50,9 +50,15 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
         videoBuffer = Buffer.from(rawBody);
       } else if (ArrayBuffer.isView(rawBody)) {
         const view = rawBody as ArrayBufferView;
-        videoBuffer = Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+        videoBuffer = Buffer.from(
+          view.buffer,
+          view.byteOffset,
+          view.byteLength,
+        );
       } else {
-        return res.status(400).json({ error: "Unsupported binary payload type" });
+        return res
+          .status(400)
+          .json({ error: "Unsupported binary payload type" });
       }
 
       if (!videoBuffer || videoBuffer.length === 0) {
@@ -121,21 +127,17 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
     const baseName = (uploadResult.public_id || "").split("/").pop();
     const optimizedUrl = `https://res.cloudinary.com/${cloudName}/video/upload/${transform}${versionSegment}/diwali-postcards/videos/${baseName}.mp4`;
 
-    res
-      .status(200)
-      .json({
-        success: true,
-        secure_url: optimizedUrl,
-        public_id: uploadResult.public_id,
-        originalUrl: uploadResult.secure_url,
-      });
+    res.status(200).json({
+      success: true,
+      secure_url: optimizedUrl,
+      public_id: uploadResult.public_id,
+      originalUrl: uploadResult.secure_url,
+    });
   } catch (error: any) {
     console.error("❌ Error in upload-video route:", error);
-    res
-      .status(500)
-      .json({
-        error: "Failed to upload video",
-        details: error?.message || String(error),
-      });
+    res.status(500).json({
+      error: "Failed to upload video",
+      details: error?.message || String(error),
+    });
   }
 };

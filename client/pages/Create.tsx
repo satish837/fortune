@@ -3879,8 +3879,6 @@ export default function Create() {
                 >
                   Generate again
                 </Button>
-
-               
               </div>
 
               {/* Social Sharing Modal */}
