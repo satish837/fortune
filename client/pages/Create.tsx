@@ -1574,7 +1574,7 @@ export default function Create() {
 
           // Check if we've recorded enough frames
           if (frameCount >= totalFrames) {
-            console.log("��� Recording complete, stopping...");
+            console.log("🎬 Recording complete, stopping...");
             // Stop recording
             const videoData = await recorder.stop();
             const videoBlob = new Blob([videoData as BlobPart], {
@@ -2725,6 +2725,8 @@ export default function Create() {
       }
 
       if (!videoBlob) throw new Error("Unable to obtain video blob for upload");
+
+      updateRecordedMimeType(videoBlob.type || recordedMimeTypeRef.current);
 
       console.log("🔧 Video details:", {
         videoSize: videoBlob.size,
