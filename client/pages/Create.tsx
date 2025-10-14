@@ -2982,8 +2982,7 @@ export default function Create() {
         }
 
         const totalHeight = lines.length * scaledLineHeight;
-        const startY =
-          y + height / 2 - (totalHeight - scaledLineHeight) / 2;
+        const startY = y + height / 2 - (totalHeight - scaledLineHeight) / 2;
         const textX = x + width / 2;
 
         lines.forEach((line, index) => {
