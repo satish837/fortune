@@ -549,6 +549,19 @@ export default function Create() {
     [setGenerationProgress],
   );
 
+  useEffect(() => {
+    generationProgressRef.current = Math.max(
+      0,
+      Math.min(100, Math.round(generationProgress)),
+    );
+  }, [generationProgress]);
+
+  useEffect(() => {
+    return () => {
+      manualLoaderControlRef.current = false;
+    };
+  }, []);
+
   // Load canvas-record only on desktop devices
   const loadCanvasRecord = async () => {
     // Double-check mobile detection to prevent CommandLineOnNonRooted error
