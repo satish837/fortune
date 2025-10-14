@@ -1337,7 +1337,7 @@ export default function Create() {
 
           if (optimizedBlob.size > 16 * 1024 * 1024) {
             console.warn(
-              "⚠️ Video too large after optimization, using original",
+              "⚠�� Video too large after optimization, using original",
             );
             resolve(URL.createObjectURL(videoBlob));
           } else {
@@ -2913,6 +2913,7 @@ export default function Create() {
 
           // Update the state for future use
           setCloudinaryVideoUrl(videoUrl);
+          updateRecordedMimeType("video/mp4");
 
           console.log(
             "✅ Video processed through Cloudinary MP4 converter:",
