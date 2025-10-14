@@ -1398,19 +1398,15 @@ export default function Create() {
           return;
         }
 
-        // Get the container's dimensions and optimize for WhatsApp
+        // Get the container's dimensions and compute 9:16 metrics
         const rect = cardContainer.getBoundingClientRect();
+        const metrics = getVideoCanvasMetrics(rect);
+        const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
 
-        // WhatsApp prefers square videos
-        const whatsappSize = 512; // WhatsApp-friendly size
-        const maxSize = Math.min(rect.width, rect.height);
-        const scale = whatsappSize / maxSize;
+        canvas.width = VIDEO_WIDTH;
+        canvas.height = VIDEO_HEIGHT;
 
-        canvas.width = whatsappSize;
-        canvas.height = whatsappSize;
-        ctx.scale(scale, scale);
-
-        // Initialize Canvas Recorder with strict WhatsApp-compatible settings
+        // Initialize Canvas Recorder with strict sharing-compatible settings
         const recorder = new Recorder(ctx, {
           extension: "mp4",
           target: "in-browser",
