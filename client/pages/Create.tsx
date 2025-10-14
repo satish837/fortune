@@ -1873,8 +1873,7 @@ export default function Create() {
         ctx,
         backgroundVideo,
         rect,
-        scale,
-        whatsappSize,
+        metrics,
       );
     } catch (error) {
       console.error("❌ Mobile video recorder initialization failed:", error);
