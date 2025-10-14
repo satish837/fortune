@@ -3835,6 +3835,7 @@ export default function Create() {
                     setResultData(null);
                     setStep(0);
                     setRecordedVideoUrl(null);
+                    setRecordedVideoBlob(null);
                     setCloudinaryVideoUrl(null);
                   }}
                 >
