@@ -733,7 +733,7 @@ export default function Create() {
   useEffect(() => {
     const initCanvasRecorder = async () => {
       try {
-        console.log("��� Canvas recorder ready to initialize");
+        console.log("🔄 Canvas recorder ready to initialize");
         // Canvas recorder will be initialized when needed
       } catch (error) {
         console.error("❌ Canvas recorder initialization failed:", error);
@@ -3296,6 +3296,7 @@ export default function Create() {
                 }
                 setCanvasRecorder(null);
                 setRecordedVideoUrl(null);
+                setRecordedVideoBlob(null);
                 setCloudinaryVideoUrl(null);
                 setRecordingProgress(0);
                 setIsRecording(false);
