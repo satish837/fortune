@@ -1153,7 +1153,7 @@ export default function Create() {
           // Draw the greeting text
           if (greeting) {
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 32px Arial";
+            ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
