@@ -259,8 +259,6 @@ const PRESET_GREETINGS = [
 
 const LOADER_STEP_HOLD_MS = 3500;
 const LOADER_STEP_FADE_MS = 700;
-const PROGRESS_INTERMEDIATE_DURATION_MS = 3000;
-const PROGRESS_FINAL_DURATION_MS = 2500;
 
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
