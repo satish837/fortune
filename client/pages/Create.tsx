@@ -468,6 +468,7 @@ export default function Create() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordedMimeTypeRef = useRef<string>("video/mp4");
   const manualLoaderControlRef = useRef(false);
+  const generationProgressRef = useRef(0);
 
   const updateRecordedMimeType = useCallback((mime?: string | null) => {
     const normalized =
