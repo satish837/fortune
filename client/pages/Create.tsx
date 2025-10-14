@@ -2860,11 +2860,16 @@ export default function Create() {
 
         if (selectedBackground?.fallback) {
           ctx.save();
-          ctx.font = `${Math.round(drawWidth * 0.35)}px Arial`;
+          const emojiFontSize = Math.max(48, Math.round(drawWidth * 0.35));
+          ctx.font = `${emojiFontSize}px Arial`;
           ctx.textAlign = "center";
           ctx.textBaseline = "middle";
           ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
-          ctx.fillText(selectedBackground.fallback, VIDEO_WIDTH / 2, VIDEO_HEIGHT / 2);
+          ctx.fillText(
+            selectedBackground.fallback,
+            offsetX + drawWidth / 2,
+            offsetY + drawHeight / 2,
+          );
           ctx.restore();
         }
       }
