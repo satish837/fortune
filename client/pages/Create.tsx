@@ -4164,7 +4164,8 @@ export default function Create() {
                   {isMobile && (
                     <div className="mt-3">
                       <p className="mb-3 text-xs text-red-600 sm:text-sm">
-                        You can still download a festive image with the background, frame, and your greeting.
+                        You can still download a festive image with the
+                        background, frame, and your greeting.
                       </p>
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Button
@@ -4173,7 +4174,9 @@ export default function Create() {
                           onClick={downloadPostcardImage}
                           disabled={imageDownloading}
                         >
-                          {imageDownloading ? "Preparing image..." : "Download Postcard Image"}
+                          {imageDownloading
+                            ? "Preparing image..."
+                            : "Download Postcard Image"}
                         </Button>
                         {imageDownloadError && (
                           <span className="text-xs text-red-600 sm:ml-2">
