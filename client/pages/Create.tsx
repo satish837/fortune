@@ -1612,6 +1612,7 @@ export default function Create() {
               const videoBlob = new Blob([videoData as BlobPart], {
                 type: "video/mp4",
               });
+              updateRecordedMimeType(videoBlob.type);
 
               console.log("✅ Video recording completed (timeout):", {
                 size: videoBlob.size,
