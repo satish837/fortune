@@ -2858,6 +2858,8 @@ export default function Create() {
             throw new Error("Unable to obtain video blob for upload");
           }
 
+          updateRecordedMimeType(blob.type || recordedMimeTypeRef.current);
+
           // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
           console.log("🔧 Upload Details:", {
