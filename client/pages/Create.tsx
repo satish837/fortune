@@ -2840,6 +2840,21 @@ export default function Create() {
         "[data-generated-greeting]",
       ) as HTMLElement | null;
 
+      let greetingRenderData: {
+        lines: string[];
+        font: string;
+        fillStyle: string;
+        textAlign: CanvasTextAlign;
+        textBaseline: CanvasTextBaseline;
+        textX: number;
+        startY: number;
+        lineHeight: number;
+        shadowColor: string;
+        shadowBlur: number;
+        shadowOffsetX: number;
+        shadowOffsetY: number;
+      } | null = null;
+
       ctx.fillStyle = "#1f2937";
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
@@ -2933,7 +2948,9 @@ export default function Create() {
         ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
       }
 
-      if (greeting && greetingElement && typeof window !== "undefined") {
+      const trimmedGreeting = greeting.trim();
+
+      if (trimmedGreeting && greetingElement && typeof window !== "undefined") {
         const greetingRect = greetingElement.getBoundingClientRect();
         const { x, y, width, height } = mapRectToCanvas(greetingRect);
         const style = window.getComputedStyle(greetingElement);
@@ -2949,27 +2966,25 @@ export default function Create() {
 
         const scaledFontSize = fontSize * scale;
         const scaledLineHeight = scaledFontSize * lineHeightRatio;
+        const font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
+        const availableWidth = width > 0 ? width : drawWidth - 80;
 
         ctx.save();
-        ctx.fillStyle = style.color || "#ffffff";
-        ctx.font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-        ctx.shadowBlur = 8 * scale;
-        ctx.shadowOffsetX = 2 * scale;
-        ctx.shadowOffsetY = 2 * scale;
+        ctx.font = font;
 
-        const words = greeting.trim().split(/\s+/);
+        const words = trimmedGreeting.split(/\s+/);
         const lines: string[] = [];
         let currentLine = "";
 
         words.forEach((word) => {
           const candidate = currentLine ? `${currentLine} ${word}` : word;
-          if (ctx.measureText(candidate).width > width && currentLine) {
+          if (
+            ctx.measureText(candidate).width > availableWidth &&
+            currentLine
+          ) {
             lines.push(currentLine);
             currentLine = word;
-          } else if (ctx.measureText(candidate).width > width) {
+          } else if (ctx.measureText(candidate).width > availableWidth) {
             lines.push(candidate);
             currentLine = "";
           } else {
@@ -2981,63 +2996,91 @@ export default function Create() {
           lines.push(currentLine);
         }
 
-        const totalHeight = lines.length * scaledLineHeight;
-        const startY = y + height / 2 - (totalHeight - scaledLineHeight) / 2;
-        const textX = x + width / 2;
-
-        lines.forEach((line, index) => {
-          ctx.fillText(line, textX, startY + index * scaledLineHeight);
-        });
-
         ctx.restore();
-      } else if (greeting) {
+
+        if (lines.length === 0) {
+          lines.push(trimmedGreeting);
+        }
+
+        const totalHeight = lines.length * scaledLineHeight;
+        const fallbackStartY =
+          offsetY +
+          drawHeight -
+          80 -
+          ((lines.length - 1) * scaledLineHeight) / 2;
+        const startY =
+          height > 0
+            ? y + height / 2 - (totalHeight - scaledLineHeight) / 2
+            : fallbackStartY;
+        const textX = width > 0 ? x + width / 2 : offsetX + drawWidth / 2;
+
+        greetingRenderData = {
+          lines,
+          font,
+          fillStyle: style.color || "#ffffff",
+          textAlign: "center",
+          textBaseline: "middle",
+          textX,
+          startY,
+          lineHeight: scaledLineHeight,
+          shadowColor: "rgba(0, 0, 0, 0.35)",
+          shadowBlur: 8 * scale,
+          shadowOffsetX: 2 * scale,
+          shadowOffsetY: 2 * scale,
+        };
+      } else if (trimmedGreeting) {
+        const font = getGreetingFont();
+
         ctx.save();
-        ctx.fillStyle = "#ffffff";
-        ctx.font = getGreetingFont();
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
-        ctx.shadowBlur = 8;
-        ctx.shadowOffsetX = 2;
-        ctx.shadowOffsetY = 2;
+        ctx.font = font;
 
         const maxWidth = drawWidth - 80;
         const lineHeight = 28;
-        const wrapText = (context: CanvasRenderingContext2D) => {
-          const words = greeting.split(" ");
-          const lines: string[] = [];
-          let currentLine = "";
+        const words = trimmedGreeting.split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = "";
 
-          for (const word of words) {
-            const candidate = currentLine ? `${currentLine} ${word}` : word;
-            const exceeds = context.measureText(candidate).width > maxWidth;
-            if (exceeds && currentLine) {
-              lines.push(currentLine);
-              currentLine = word;
-            } else if (exceeds) {
-              lines.push(candidate);
-              currentLine = "";
-            } else {
-              currentLine = candidate;
-            }
-          }
-
-          if (currentLine) {
+        words.forEach((word) => {
+          const candidate = currentLine ? `${currentLine} ${word}` : word;
+          const exceeds = ctx.measureText(candidate).width > maxWidth;
+          if (exceeds && currentLine) {
             lines.push(currentLine);
+            currentLine = word;
+          } else if (exceeds) {
+            lines.push(candidate);
+            currentLine = "";
+          } else {
+            currentLine = candidate;
           }
+        });
 
-          return lines;
-        };
+        if (currentLine) {
+          lines.push(currentLine);
+        }
 
-        const lines = wrapText(ctx);
+        ctx.restore();
+
+        if (lines.length === 0) {
+          lines.push(trimmedGreeting);
+        }
+
         const baseY =
           offsetY + drawHeight - 80 - ((lines.length - 1) * lineHeight) / 2;
 
-        lines.forEach((line, index) => {
-          ctx.fillText(line, VIDEO_WIDTH / 2, baseY + index * lineHeight);
-        });
-
-        ctx.restore();
+        greetingRenderData = {
+          lines,
+          font,
+          fillStyle: "#ffffff",
+          textAlign: "center",
+          textBaseline: "middle",
+          textX: VIDEO_WIDTH / 2,
+          startY: baseY,
+          lineHeight,
+          shadowColor: "rgba(0, 0, 0, 0.35)",
+          shadowBlur: 8,
+          shadowOffsetX: 2,
+          shadowOffsetY: 2,
+        };
       }
 
       ctx.restore();
@@ -3048,6 +3091,43 @@ export default function Create() {
         ctx.drawImage(frameImg, x, y, width, height);
       } else {
         ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
+      }
+
+      if (greetingRenderData) {
+        const {
+          lines,
+          font,
+          fillStyle,
+          textAlign,
+          textBaseline,
+          textX,
+          startY,
+          lineHeight,
+          shadowColor,
+          shadowBlur,
+          shadowOffsetX,
+          shadowOffsetY,
+        } = greetingRenderData;
+
+        ctx.save();
+        ctx.beginPath();
+        ctx.rect(offsetX, offsetY, drawWidth, drawHeight);
+        ctx.clip();
+
+        ctx.fillStyle = fillStyle;
+        ctx.font = font;
+        ctx.textAlign = textAlign;
+        ctx.textBaseline = textBaseline;
+        ctx.shadowColor = shadowColor;
+        ctx.shadowBlur = shadowBlur;
+        ctx.shadowOffsetX = shadowOffsetX;
+        ctx.shadowOffsetY = shadowOffsetY;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(line, textX, startY + index * lineHeight);
+        });
+
+        ctx.restore();
       }
 
       await new Promise<void>((resolve, reject) => {
