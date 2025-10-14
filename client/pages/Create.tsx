@@ -1791,7 +1791,7 @@ export default function Create() {
       // Automatically upload to Cloudinary with error handling
       try {
         console.log("📤 Uploading video to Cloudinary...");
-        const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
+        const cloudinaryUrl = await uploadVideoToCloudinary(videoBlob);
         setCloudinaryVideoUrl(cloudinaryUrl);
         console.log(
           "✅ Video uploaded to Cloudinary successfully!",
@@ -1819,7 +1819,7 @@ export default function Create() {
     metrics: VideoCanvasMetrics,
   ) => {
     try {
-      console.log("📱 Initializing mobile video recorder...");
+      console.log("�� Initializing mobile video recorder...");
 
       // Create a stream from the canvas
       const stream = canvas.captureStream(15); // 15 FPS
