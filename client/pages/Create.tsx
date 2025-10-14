@@ -3402,7 +3402,7 @@ export default function Create() {
       });
     }
 
-    const message = "Check out my festive Diwali postcard video! ��✨";
+    const message = "Check out my festive Diwali postcard video! 🎆✨";
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}&quote=${encodeURIComponent(message)}`;
     window.open(facebookUrl, "_blank", "noopener,noreferrer");
   };
@@ -4146,6 +4146,42 @@ export default function Create() {
                   Generate again
                 </Button>
               </div>
+
+              {videoGenerationError && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <div className="font-semibold text-red-800">
+                    We couldn 27t generate the video.
+                  </div>
+                  <p className="mt-1">{videoGenerationError}</p>
+                  {isMobile && (
+                    <div className="mt-3">
+                      <p className="mb-3 text-xs text-red-600 sm:text-sm">
+                        You can still download a festive image with the background, frame, and your greeting.
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Button
+                          type="button"
+                          className="h-10 px-4 bg-orange-600 text-white hover:bg-orange-700"
+                          onClick={downloadPostcardImage}
+                          disabled={imageDownloading}
+                        >
+                          {imageDownloading ? "Preparing image..." : "Download Postcard Image"}
+                        </Button>
+                        {imageDownloadError && (
+                          <span className="text-xs text-red-600 sm:ml-2">
+                            {imageDownloadError}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {!isMobile && imageDownloadError && (
+                    <div className="mt-2 text-xs text-red-600">
+                      {imageDownloadError}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {cloudinaryVideoUrl && (
                 <div className="mt-4 max-w-3xl mx-auto">
