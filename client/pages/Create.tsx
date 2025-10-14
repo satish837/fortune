@@ -4262,7 +4262,7 @@ export default function Create() {
                   <div className="flex flex-col gap-2">
                     <Button
                       type="button"
-                      className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
+                      className="h-11 px-6 bg-blue-600 text-white hover:bg-blue-700"
                       onClick={downloadPostcardImage}
                       disabled={imageDownloading}
                     >
@@ -4317,7 +4317,7 @@ export default function Create() {
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Button
                           type="button"
-                          className="h-10 px-4 bg-orange-600 text-white hover:bg-orange-700"
+                          className="h-10 px-4 bg-blue-600 text-white hover:bg-blue-700"
                           onClick={downloadPostcardImage}
                           disabled={imageDownloading}
                         >
