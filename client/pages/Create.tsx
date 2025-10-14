@@ -2765,6 +2765,7 @@ export default function Create() {
         if (!url) throw new Error("Unsigned upload returned no URL");
         console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
         setCloudinaryVideoUrl(url);
+        updateRecordedMimeType("video/mp4");
         return url;
       };
 
