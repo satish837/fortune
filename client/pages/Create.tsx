@@ -3880,12 +3880,7 @@ export default function Create() {
                   Generate again
                 </Button>
 
-                <Button
-                  onClick={copyVideoLink}
-                  className="h-11 px-6 bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                >
-                  Copy Video URL
-                </Button>
+               
               </div>
 
               {/* Social Sharing Modal */}
