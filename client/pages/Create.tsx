@@ -4323,20 +4323,22 @@ export default function Create() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <Button
-                  type="button"
-                  className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
-                  onClick={recordedVideoUrl ? downloadVideo : startRecording}
-                  disabled={isRecording || downloading}
-                >
-                  {isRecording
-                    ? "Recording..."
-                    : downloading
-                      ? "Uploading to Cloudinary..."
-                      : recordedVideoUrl
-                        ? "Download Video"
-                        : "Start Recording"}
-                </Button>
+                {!isMobile && (
+                  <Button
+                    type="button"
+                    className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
+                    onClick={recordedVideoUrl ? downloadVideo : startRecording}
+                    disabled={isRecording || downloading}
+                  >
+                    {isRecording
+                      ? "Recording..."
+                      : downloading
+                        ? "Uploading to Cloudinary..."
+                        : recordedVideoUrl
+                          ? "Download Video"
+                          : "Start Recording"}
+                  </Button>
+                )}
 
                 {isMobile && (
                   <div className="flex flex-col gap-2">
