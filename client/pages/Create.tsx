@@ -3765,21 +3765,7 @@ export default function Create() {
                       </Button>
                     )}
 
-                    {isRecording && (
-                      <div className="text-sm text-orange-700">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                          <span>
-                            Recording: {recordingProgress.toFixed(1)}s
-                          </span>
-                          {recordingProgress < 2 && (
-                            <span className="text-xs text-orange-600">
-                              (Min: 2s)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
+                   
                   </div>
 
                   <div className="text-xs text-gray-500 mt-2">
@@ -3798,22 +3784,8 @@ export default function Create() {
                         canvas-record demo
                       </a>
                     </p>
-                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-700">
-                      <p className="font-medium">⏱️ Recording Tips</p>
-                      <p className="text-xs">
-                        • Record for at least 2 seconds for best results
-                      </p>
-                      <p className="text-xs">
-                        • Longer recordings create smoother videos
-                      </p>
-                    </div>
-                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                      <p className="font-medium">�� Maximum Compatibility</p>
-                      <p className="text-xs">
-                        Videos are optimized for maximum compatibility (512x512,
-                        15fps, H.264 Baseline)
-                      </p>
-                    </div>
+                   
+                    
                   </div>
 
                   {/* Video Generation Error */}
