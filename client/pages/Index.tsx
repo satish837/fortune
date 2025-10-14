@@ -15,6 +15,26 @@ interface FormState {
   acceptTerms: boolean;
 }
 
+const JSON_CONTENT_TYPE = /application\/json/i;
+
+async function readJsonBody<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!JSON_CONTENT_TYPE.test(contentType)) {
+    return null;
+  }
+
+  try {
+    const raw = await response.clone().text();
+    if (!raw?.trim()) {
+      return null;
+    }
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON response", error);
+    return null;
+  }
+}
+
 const TERMS_AND_CONDITIONS = `Terms & Conditions – #DiwaliKaFortune Postcard Experience
 
 Participation in the #DiwaliKaFortune Postcard Experience ("Activity") is voluntary and free of charge.
@@ -155,7 +175,6 @@ export default function Index() {
 
     setLoading(true);
     try {
-      // Send OTP to email
       const response = await fetch('/api/send-otp', {
         method: 'POST',
         headers: {
@@ -167,11 +186,10 @@ export default function Index() {
         }),
       });
 
-      const data = await response.json();
+      const data = await readJsonBody<{ error?: string }>(response);
 
       if (response.ok) {
-        // Navigate to OTP verification page with user data
-        navigate("/verify-otp", { 
+        navigate("/verify-otp", {
           state: {
             email: form.email,
             name: form.name,
@@ -180,7 +198,7 @@ export default function Index() {
           }
         });
       } else {
-        alert(data.error || 'Failed to send OTP. Please try again.');
+        alert(data?.error || 'Failed to send OTP. Please try again.');
       }
     } catch (error) {
       alert('Network error. Please try again.');
@@ -206,11 +224,18 @@ export default function Index() {
         }),
       });
 
-      const data = await response.json();
+      const data = await readJsonBody<{
+        error?: string;
+        userData?: {
+          name: string;
+          email: string;
+          phone: string;
+          handle?: string;
+        };
+      }>(response);
 
-      if (response.ok) {
-        // Navigate to OTP verification page with existing user data
-        navigate("/verify-otp", { 
+      if (response.ok && data?.userData) {
+        navigate("/verify-otp", {
           state: {
             email: data.userData.email,
             name: data.userData.name,
@@ -220,7 +245,7 @@ export default function Index() {
           }
         });
       } else {
-        setExistingUserError(data.error || 'User not found or failed to send OTP. Please try again.');
+        setExistingUserError(data?.error || 'User not found or failed to send OTP. Please try again.');
       }
     } catch (error) {
       console.error('Existing user OTP error:', error);
