@@ -2862,6 +2862,9 @@ export default function Create() {
 
           // Send raw binary to server for upload
           const arrayBuffer = await blob.arrayBuffer();
+          const uploadFilenameExtension = getFileExtensionFromMime(
+            blob.type || recordedMimeTypeRef.current,
+          );
           console.log("🔧 Upload Details:", {
             videoSize: blob.size,
             videoType: blob.type,
