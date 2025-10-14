@@ -3839,7 +3839,7 @@ export default function Create() {
 
               {cloudinaryVideoUrl && (
                 <div className="mt-4 max-w-3xl mx-auto">
-                  <div className="flex flex-col gap-3 rounded-lg border border-orange-200 bg-white/80 p-4 shadow-sm backdrop-blur sm:flex-row sm:items-center">
+                  <div className="flex flex-col gap-3 rounded-lg border border-orange-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center">
                     <div className="flex-1 break-all text-left text-sm text-orange-900">
                       <div className="font-semibold text-orange-900">
                         Cloudinary video link
