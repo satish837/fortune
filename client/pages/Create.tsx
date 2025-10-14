@@ -4136,6 +4136,26 @@ export default function Create() {
                         : "Start Recording"}
                 </Button>
 
+                {isMobile && (
+                  <div className="flex flex-col gap-2">
+                    <Button
+                      type="button"
+                      className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
+                      onClick={downloadPostcardImage}
+                      disabled={imageDownloading}
+                    >
+                      {imageDownloading
+                        ? "Preparing image..."
+                        : "Download Postcard Image"}
+                    </Button>
+                    {imageDownloadError && (
+                      <span className="text-xs text-red-600 text-center sm:text-left">
+                        {imageDownloadError}
+                      </span>
+                    )}
+                  </div>
+                )}
+
                 <Button
                   type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
@@ -4161,12 +4181,17 @@ export default function Create() {
                     We couldn't generate the video.
                   </div>
                   <p className="mt-1">{videoGenerationError}</p>
-                  {isMobile && (
-                    <div className="mt-3">
-                      <p className="mb-3 text-xs text-red-600 sm:text-sm">
-                        You can still download a festive image with the
-                        background, frame, and your greeting.
+                  <div className="mt-3">
+                    <p className="mb-3 text-xs text-red-600 sm:text-sm">
+                      You can still download a festive image with the
+                      background, frame, and your greeting.
+                    </p>
+                    {isMobile ? (
+                      <p className="text-xs text-orange-700">
+                        Use the Download Postcard Image button above to save
+                        your postcard.
                       </p>
+                    ) : (
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
                         <Button
                           type="button"
@@ -4184,13 +4209,8 @@ export default function Create() {
                           </span>
                         )}
                       </div>
-                    </div>
-                  )}
-                  {!isMobile && imageDownloadError && (
-                    <div className="mt-2 text-xs text-red-600">
-                      {imageDownloadError}
-                    </div>
-                  )}
+                    )}
+                  </div>
                 </div>
               )}
 
