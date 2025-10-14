@@ -508,40 +508,43 @@ export default function Create() {
   );
 
   const animateProgress = useCallback(
-    (start: number, end: number, duration: number) => {
-      if (duration <= 0) {
-        setGenerationProgress(end);
-        return Promise.resolve();
+    async (target: number) => {
+      const boundedTarget = Math.max(0, Math.min(100, Math.round(target)));
+      let current = Math.max(
+        0,
+        Math.min(100, Math.round(generationProgressRef.current)),
+      );
+
+      if (current === boundedTarget) {
+        return;
       }
 
-      return new Promise<void>((resolve) => {
-        if (
-          typeof window === "undefined" ||
-          typeof window.requestAnimationFrame !== "function"
-        ) {
-          setGenerationProgress(end);
-          resolve();
-          return;
+      const step = boundedTarget > current ? 1 : -1;
+
+      while (manualLoaderControlRef.current && current !== boundedTarget) {
+        await delay(1000);
+
+        if (!manualLoaderControlRef.current) {
+          break;
         }
 
-        let startTimestamp: number | null = null;
-        const stepFrame = (timestamp: number) => {
-          if (startTimestamp === null) {
-            startTimestamp = timestamp;
-          }
-          const elapsed = timestamp - startTimestamp;
-          const progress = Math.min(elapsed / duration, 1);
-          const value = start + (end - start) * progress;
-          setGenerationProgress(value);
-          if (progress < 1) {
-            window.requestAnimationFrame(stepFrame);
-          } else {
-            resolve();
-          }
-        };
+        current += step;
 
-        window.requestAnimationFrame(stepFrame);
-      });
+        if (
+          (step > 0 && current > boundedTarget) ||
+          (step < 0 && current < boundedTarget)
+        ) {
+          current = boundedTarget;
+        }
+
+        generationProgressRef.current = current;
+        setGenerationProgress(current);
+      }
+
+      if (!manualLoaderControlRef.current && current !== boundedTarget) {
+        generationProgressRef.current = boundedTarget;
+        setGenerationProgress(boundedTarget);
+      }
     },
     [setGenerationProgress],
   );
