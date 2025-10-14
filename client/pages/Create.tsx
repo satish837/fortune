@@ -3682,7 +3682,7 @@ export default function Create() {
                           style={{ zIndex: 1002 }}
                         >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-xl md:text-2xl font-semibold leading-tight">
+                            <p className="text-sm md:text-2xl font-semibold leading-tight">
                               {greeting}
                             </p>
                           </div>
