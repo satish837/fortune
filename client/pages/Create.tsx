@@ -1194,6 +1194,7 @@ export default function Create() {
       return new Promise((resolve) => {
         mediaRecorder.onstop = () => {
           const videoBlob = new Blob(chunks, { type: "video/mp4" });
+          updateRecordedMimeType(videoBlob.type);
           const videoUrl = URL.createObjectURL(videoBlob);
 
           console.log("✅ Fallback video generated:", {
