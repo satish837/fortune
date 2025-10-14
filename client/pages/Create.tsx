@@ -2813,7 +2813,6 @@ export default function Create() {
         if (signaturePayload.transformation) {
           fd.append("transformation", signaturePayload.transformation);
         }
-        fd.append("resource_type", "video");
 
         const uploadRes = await fetch(
           `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/video/upload`,
@@ -3836,6 +3835,35 @@ export default function Create() {
                   Generate again
                 </Button>
               </div>
+
+              {cloudinaryVideoUrl && (
+                <div className="mt-4 max-w-3xl mx-auto">
+                  <div className="flex flex-col gap-3 rounded-lg border border-orange-200 bg-white/80 p-4 shadow-sm backdrop-blur-sm sm:flex-row sm:items-center">
+                    <div className="flex-1 break-all text-left text-sm text-orange-900">
+                      <div className="font-semibold text-orange-900">
+                        Cloudinary video link
+                      </div>
+                      <a
+                        href={cloudinaryVideoUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block break-words text-orange-600 underline"
+                      >
+                        {cloudinaryVideoUrl}
+                      </a>
+                    </div>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="whitespace-nowrap"
+                      onClick={copyVideoLink}
+                    >
+                      Copy link
+                    </Button>
+                  </div>
+                </div>
+              )}
 
               {/* Social Sharing Modal */}
               <Dialog open={shareOpen} onOpenChange={setShareOpen}>
