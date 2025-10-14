@@ -1488,11 +1488,7 @@ export default function Create() {
           // Check if we should record this frame
           if (currentTime - lastFrameTime >= frameInterval) {
             // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Calculate centered position for 9:16 canvas
-            const offsetX = (targetWidth - rect.width * scale) / 2;
-            const offsetY = (targetHeight - rect.height * scale) / 2;
+            ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
 
             // Draw the background video
             if (
@@ -1503,8 +1499,8 @@ export default function Create() {
                 backgroundVideo,
                 offsetX,
                 offsetY,
-                rect.width * scale,
-                rect.height * scale,
+                drawWidth,
+                drawHeight,
               );
             }
 
@@ -1513,8 +1509,8 @@ export default function Create() {
               generatedImg,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
 
             // Draw the photo frame
@@ -1522,8 +1518,8 @@ export default function Create() {
               photoFrameImg,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
 
             // Draw the greeting text
@@ -1532,7 +1528,7 @@ export default function Create() {
               ctx.font = "bold 20px Arial";
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+              ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
             }
 
             // Record this frame
@@ -1852,7 +1848,7 @@ export default function Create() {
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
           console.log(
-            "�� Mobile video uploaded to Cloudinary successfully!",
+            "���� Mobile video uploaded to Cloudinary successfully!",
             cloudinaryUrl,
           );
         } catch (error) {
@@ -2418,7 +2414,7 @@ export default function Create() {
       } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
         mimeType = "video/webm;codecs=vp8";
         console.log(
-          "⚠️ MP4 not supported, using WebM VP8 - Limited social media compatibility",
+          "⚠�� MP4 not supported, using WebM VP8 - Limited social media compatibility",
         );
       } else {
         console.warn("❌ No supported video format found, using default");
@@ -3929,7 +3925,7 @@ export default function Create() {
 
                   <div className="mt-4 text-center">
                     <p className="text-sm text-orange-700">
-                      💡 <strong>Tip:</strong> For Instagram and TikTok,
+                      ���� <strong>Tip:</strong> For Instagram and TikTok,
                       download the video first, then upload it to the app!
                     </p>
                   </div>
