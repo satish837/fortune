@@ -17,7 +17,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         .json({ error: "Cloudinary configuration missing" });
     }
 
-    // Determine video data from request. Support JSON { videoData: 'data:...base64,...' } or multipart with req.body.video
+    // Determine video data from request. Support JSON { videoData: 'data:...base64,...' }, raw octet-stream, or body.video
     let videoBuffer: Buffer | null = null;
     let originalFilename = "festive-postcard-video.mp4";
 
@@ -37,8 +37,30 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const base64 = match[2];
       videoBuffer = Buffer.from(base64, "base64");
       originalFilename = body.fileName || originalFilename;
+    } else if (contentType.includes("application/octet-stream")) {
+      // Read raw binary body (client sends ArrayBuffer with this content-type)
+      const bodyAny: any = (req as any).body;
+      if (bodyAny && bodyAny instanceof Buffer && bodyAny.length > 0) {
+        videoBuffer = Buffer.from(bodyAny);
+      } else if (bodyAny && bodyAny.data) {
+        videoBuffer = Buffer.from(bodyAny.data);
+      } else {
+        // Fallback: stream read
+        const chunks: Buffer[] = [];
+        await new Promise<void>((resolve, reject) => {
+          (req as any)
+            .on("data", (chunk: Buffer) => chunks.push(chunk))
+            .on("end", () => resolve())
+            .on("error", (err: any) => reject(err));
+        });
+        if (chunks.length > 0) {
+          videoBuffer = Buffer.concat(chunks);
+        }
+      }
+      const filenameHeader = (req.headers["x-filename"] || "").toString();
+      if (filenameHeader) originalFilename = filenameHeader;
     } else {
-      // Try to use req.body.video (may be available in some runtimes) or raw body
+      // Try to use req.body.video (may be available in some runtimes)
       const possible = (req.body &&
         (req.body.video || req.body.videoData || req.body.videoDataUrl)) as any;
       if (
