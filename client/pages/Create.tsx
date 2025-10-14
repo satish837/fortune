@@ -2813,17 +2813,42 @@ export default function Create() {
         throw new Error("Unable to create drawing context.");
       }
 
-      const { offsetX, offsetY, drawWidth, drawHeight } =
-        getVideoCanvasMetrics(rect);
+      const metrics = getVideoCanvasMetrics(rect);
+      const { offsetX, offsetY, drawWidth, drawHeight, scale } = metrics;
 
-      ctx.fillStyle = "#1f2937";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      const mapRectToCanvas = (elementRect: DOMRect) => {
+        const relativeX = elementRect.left - rect.left;
+        const relativeY = elementRect.top - rect.top;
+        return {
+          x: offsetX + relativeX * scale,
+          y: offsetY + relativeY * scale,
+          width: elementRect.width * scale,
+          height: elementRect.height * scale,
+        };
+      };
 
       const backgroundVideo = cardContainer.querySelector(
         'video[src*="background"]',
       ) as HTMLVideoElement | null;
+      const frameElement = cardContainer.querySelector(
+        'img[alt="photo frame"]',
+      ) as HTMLImageElement | null;
+      const overlayElement = cardContainer.querySelector(
+        "[data-generated-image]",
+      ) as HTMLImageElement | null;
+      const greetingElement = cardContainer.querySelector(
+        "[data-generated-greeting]",
+      ) as HTMLElement | null;
+
+      ctx.fillStyle = "#1f2937";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       let backgroundDrawn = false;
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(offsetX, offsetY, drawWidth, drawHeight);
+      ctx.clip();
 
       if (backgroundVideo) {
         try {
@@ -2832,13 +2857,9 @@ export default function Create() {
             backgroundVideo.videoWidth > 0 &&
             backgroundVideo.videoHeight > 0
           ) {
-            ctx.drawImage(
-              backgroundVideo,
-              offsetX,
-              offsetY,
-              drawWidth,
-              drawHeight,
-            );
+            const videoRect = backgroundVideo.getBoundingClientRect();
+            const { x, y, width, height } = mapRectToCanvas(videoRect);
+            ctx.drawImage(backgroundVideo, x, y, width, height);
             backgroundDrawn = true;
           }
         } catch (error) {
@@ -2848,10 +2869,10 @@ export default function Create() {
 
       if (!backgroundDrawn) {
         const gradient = ctx.createLinearGradient(
-          0,
-          0,
-          canvas.width,
-          canvas.height,
+          offsetX,
+          offsetY,
+          offsetX + drawWidth,
+          offsetY + drawHeight,
         );
         gradient.addColorStop(0, "#fb923c");
         gradient.addColorStop(1, "#f97316");
@@ -2879,10 +2900,97 @@ export default function Create() {
         loadHtmlImage("/photo-frame-story.png"),
       ]);
 
-      ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
-      ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
+      if (overlayElement) {
+        const overlayRect = overlayElement.getBoundingClientRect();
+        const { x, y, width, height } = mapRectToCanvas(overlayRect);
+        const naturalWidth =
+          generatedImg.naturalWidth || generatedImg.width || width;
+        const naturalHeight =
+          generatedImg.naturalHeight || generatedImg.height || height;
 
-      if (greeting) {
+        let targetWidth = width;
+        let targetHeight = height;
+        let drawX = x;
+        let drawY = y;
+
+        if (naturalWidth > 0 && naturalHeight > 0) {
+          const sourceAspect = naturalWidth / naturalHeight;
+          const destAspect = width / height;
+
+          if (destAspect > sourceAspect) {
+            targetHeight = height;
+            targetWidth = targetHeight * sourceAspect;
+            drawX += (width - targetWidth) / 2;
+          } else {
+            targetWidth = width;
+            targetHeight = targetWidth / sourceAspect;
+            drawY += (height - targetHeight) / 2;
+          }
+        }
+
+        ctx.drawImage(generatedImg, drawX, drawY, targetWidth, targetHeight);
+      } else {
+        ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
+      }
+
+      if (greeting && greetingElement && typeof window !== "undefined") {
+        const greetingRect = greetingElement.getBoundingClientRect();
+        const { x, y, width, height } = mapRectToCanvas(greetingRect);
+        const style = window.getComputedStyle(greetingElement);
+
+        const fontSize = parseFloat(style.fontSize) || 20;
+        const fontFamily = style.fontFamily || "Arial";
+        const fontWeight = style.fontWeight || "bold";
+        const lineHeightValue = parseFloat(style.lineHeight);
+        const lineHeightRatio =
+          Number.isFinite(lineHeightValue) && lineHeightValue > 0
+            ? lineHeightValue / fontSize
+            : 1.2;
+
+        const scaledFontSize = fontSize * scale;
+        const scaledLineHeight = scaledFontSize * lineHeightRatio;
+
+        ctx.save();
+        ctx.fillStyle = style.color || "#ffffff";
+        ctx.font = `${fontWeight} ${scaledFontSize}px ${fontFamily}`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+        ctx.shadowBlur = 8 * scale;
+        ctx.shadowOffsetX = 2 * scale;
+        ctx.shadowOffsetY = 2 * scale;
+
+        const words = greeting.trim().split(/\s+/);
+        const lines: string[] = [];
+        let currentLine = "";
+
+        words.forEach((word) => {
+          const candidate = currentLine ? `${currentLine} ${word}` : word;
+          if (ctx.measureText(candidate).width > width && currentLine) {
+            lines.push(currentLine);
+            currentLine = word;
+          } else if (ctx.measureText(candidate).width > width) {
+            lines.push(candidate);
+            currentLine = "";
+          } else {
+            currentLine = candidate;
+          }
+        });
+
+        if (currentLine) {
+          lines.push(currentLine);
+        }
+
+        const totalHeight = lines.length * scaledLineHeight;
+        const startY = y + height / 2 - (totalHeight - scaledLineHeight) / 2;
+        const textX = x + width / 2;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(line, textX, startY + index * scaledLineHeight);
+        });
+
+        ctx.restore();
+      } else if (greeting) {
         ctx.save();
         ctx.fillStyle = "#ffffff";
         ctx.font = getGreetingFont();
@@ -2930,6 +3038,16 @@ export default function Create() {
         });
 
         ctx.restore();
+      }
+
+      ctx.restore();
+
+      if (frameElement) {
+        const frameRect = frameElement.getBoundingClientRect();
+        const { x, y, width, height } = mapRectToCanvas(frameRect);
+        ctx.drawImage(frameImg, x, y, width, height);
+      } else {
+        ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
       }
 
       await new Promise<void>((resolve, reject) => {
@@ -4073,6 +4191,7 @@ export default function Create() {
                         <img
                           src={result}
                           alt="result"
+                          data-generated-image
                           className="object-contain absolute md:top-[28%] top-[30%]"
                           style={{
                             background: "transparent",
@@ -4087,7 +4206,10 @@ export default function Create() {
                           style={{ zIndex: 1002 }}
                         >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-sm md:text-2xl leading-tight font-semibold">
+                            <p
+                              className="text-sm md:text-2xl leading-tight font-semibold"
+                              data-generated-greeting
+                            >
                               {greeting}
                             </p>
                           </div>
