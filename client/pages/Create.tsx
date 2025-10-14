@@ -3018,14 +3018,17 @@ export default function Create() {
 
     if (cloudinaryVideoUrl) {
       urlToShare = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
-    } else if (recordedVideoUrl) {
-      try {
-        setUploadError(null);
-        const uploadedUrl = await uploadVideoToCloudinary(recordedVideoUrl);
-        urlToShare = buildSocialUrl(uploadedUrl) || uploadedUrl;
-      } catch (e) {
-        alert("Unable to prepare a shareable link. Please try again.");
-        return;
+    } else {
+      const uploadSource = recordedVideoBlob ?? recordedVideoUrl;
+      if (uploadSource) {
+        try {
+          setUploadError(null);
+          const uploadedUrl = await uploadVideoToCloudinary(uploadSource);
+          urlToShare = buildSocialUrl(uploadedUrl) || uploadedUrl;
+        } catch (e) {
+          alert("Unable to prepare a shareable link. Please try again.");
+          return;
+        }
       }
     }
 
