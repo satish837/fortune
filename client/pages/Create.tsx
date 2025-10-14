@@ -3012,8 +3012,7 @@ export default function Create() {
           height > 0
             ? y + height / 2 - (totalHeight - scaledLineHeight) / 2
             : fallbackStartY;
-        const textX =
-          width > 0 ? x + width / 2 : offsetX + drawWidth / 2;
+        const textX = width > 0 ? x + width / 2 : offsetX + drawWidth / 2;
 
         greetingRenderData = {
           lines,
