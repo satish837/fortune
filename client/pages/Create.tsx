@@ -1899,6 +1899,8 @@ export default function Create() {
     const targetFPS = 15; // 15 FPS for WhatsApp compatibility
     const frameInterval = 1000 / targetFPS; // ~66.67ms per frame
 
+    const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
+
     // Pre-load images
     const generatedImg = new Image();
     generatedImg.crossOrigin = "anonymous";
