@@ -2877,7 +2877,7 @@ export default function Create() {
               method: "POST",
               headers: {
                 "Content-Type": "application/octet-stream",
-                "x-filename": `festive-postcard-${Date.now()}.mp4`,
+                "x-filename": `festive-postcard-${Date.now()}.${uploadFilenameExtension}`,
               },
               body: arrayBuffer,
             });
