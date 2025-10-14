@@ -8,6 +8,9 @@
     },
     "api/test-bg-removal.ts": {
       "maxDuration": 300
+    },
+    "api/upload-video.ts": {
+      "maxDuration": 60
     }
   },
   "routes": [
