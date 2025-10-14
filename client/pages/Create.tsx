@@ -259,8 +259,7 @@ const PRESET_GREETINGS = [
 
 const LOADER_STEP_HOLD_MS = 3500;
 const LOADER_STEP_FADE_MS = 700;
-const PROGRESS_INTERMEDIATE_DURATION_MS = 3000;
-const PROGRESS_FINAL_DURATION_MS = 2500;
+const PROGRESS_INCREMENT_INTERVAL_MS = 1500;
 
 const delay = (ms: number) =>
   new Promise<void>((resolve) => {
@@ -470,6 +469,30 @@ export default function Create() {
   const recordedChunksRef = useRef<Blob[]>([]);
   const recordedMimeTypeRef = useRef<string>("video/mp4");
   const manualLoaderControlRef = useRef(false);
+  const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
+    null,
+  );
+
+  const clearProgressInterval = useCallback(() => {
+    if (progressIntervalRef.current) {
+      clearInterval(progressIntervalRef.current);
+      progressIntervalRef.current = null;
+    }
+  }, []);
+
+  const startProgressIncrement = useCallback(() => {
+    clearProgressInterval();
+    progressIntervalRef.current = setInterval(() => {
+      setGenerationProgress((prev) => {
+        if (prev >= 99) {
+          clearProgressInterval();
+          return prev;
+        }
+        const next = prev + 1;
+        return next >= 99 ? 99 : next;
+      });
+    }, PROGRESS_INCREMENT_INTERVAL_MS);
+  }, [clearProgressInterval]);
 
   const updateRecordedMimeType = useCallback((mime?: string | null) => {
     const normalized =
@@ -506,45 +529,6 @@ export default function Create() {
   const selectedBackground = useMemo(
     () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
     [bg],
-  );
-
-  const animateProgress = useCallback(
-    (start: number, end: number, duration: number) => {
-      if (duration <= 0) {
-        setGenerationProgress(end);
-        return Promise.resolve();
-      }
-
-      return new Promise<void>((resolve) => {
-        if (
-          typeof window === "undefined" ||
-          typeof window.requestAnimationFrame !== "function"
-        ) {
-          setGenerationProgress(end);
-          resolve();
-          return;
-        }
-
-        let startTimestamp: number | null = null;
-        const stepFrame = (timestamp: number) => {
-          if (startTimestamp === null) {
-            startTimestamp = timestamp;
-          }
-          const elapsed = timestamp - startTimestamp;
-          const progress = Math.min(elapsed / duration, 1);
-          const value = start + (end - start) * progress;
-          setGenerationProgress(value);
-          if (progress < 1) {
-            window.requestAnimationFrame(stepFrame);
-          } else {
-            resolve();
-          }
-        };
-
-        window.requestAnimationFrame(stepFrame);
-      });
-    },
-    [setGenerationProgress],
   );
 
   // Load canvas-record only on desktop devices
@@ -786,6 +770,12 @@ export default function Create() {
       }, 500);
     }
   }, [step]);
+
+  useEffect(() => {
+    return () => {
+      clearProgressInterval();
+    };
+  }, [clearProgressInterval]);
 
   // Cycle through generation steps while loading
   useEffect(() => {
@@ -3212,6 +3202,7 @@ export default function Create() {
     setResult(null);
     setGenerationStep(0);
     setGenerationProgress(0);
+    startProgressIncrement();
 
     // Track image generation start
     if (typeof window !== "undefined" && (window as any).fbq) {
@@ -3235,13 +3226,10 @@ export default function Create() {
     }
 
     try {
-      // Simulate progress through generation steps with slower animation
+      // Simulate generation steps messaging
       for (let i = 0; i < GENERATION_STEPS.length; i++) {
         setGenerationStep(i);
         setIsFading(false);
-
-        const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70;
-        setGenerationProgress(stepProgress);
 
         await delay(LOADER_STEP_HOLD_MS);
         setIsFading(true);
@@ -3249,7 +3237,6 @@ export default function Create() {
       }
 
       setIsFading(false);
-      await animateProgress(70, 90, PROGRESS_INTERMEDIATE_DURATION_MS);
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -3266,7 +3253,8 @@ export default function Create() {
       }
       const json = await res.json();
 
-      await animateProgress(90, 100, PROGRESS_FINAL_DURATION_MS);
+      clearProgressInterval();
+      setGenerationProgress(100);
 
       await delay(LOADER_STEP_FADE_MS);
 
@@ -3299,6 +3287,7 @@ export default function Create() {
           "Failed to generate. Configure FAL_KEY in env and try again.",
       );
     } finally {
+      clearProgressInterval();
       manualLoaderControlRef.current = false;
       setLoading(false);
     }
