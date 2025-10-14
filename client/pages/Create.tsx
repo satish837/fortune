@@ -2813,7 +2813,6 @@ export default function Create() {
         if (signaturePayload.transformation) {
           fd.append("transformation", signaturePayload.transformation);
         }
-        fd.append("resource_type", "video");
 
         const uploadRes = await fetch(
           `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/video/upload`,
