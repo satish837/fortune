@@ -1323,6 +1323,7 @@ export default function Create() {
 
         mediaRecorder.onstop = () => {
           const optimizedBlob = new Blob(chunks, { type: "video/mp4" });
+          updateRecordedMimeType(optimizedBlob.type);
           const optimizedUrl = URL.createObjectURL(optimizedBlob);
 
           console.log("📱 Optimized video:", {
