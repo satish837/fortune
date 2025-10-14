@@ -1825,12 +1825,36 @@ export default function Create() {
       // Create a stream from the canvas
       const stream = canvas.captureStream(15); // 15 FPS
 
-      // Create MediaRecorder with WhatsApp-compatible settings
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
+      const preferredMimeTypes = [
+        'video/mp4; codecs="avc1.42E01E"',
+        "video/mp4",
+        'video/webm; codecs="vp9"',
+        'video/webm; codecs="vp8"',
+        "video/webm",
+      ];
+
+      const supportedMimeType = preferredMimeTypes.find((type) => {
+        if (typeof MediaRecorder === "undefined") {
+          return false;
+        }
+        try {
+          return MediaRecorder.isTypeSupported(type);
+        } catch (error) {
+          console.warn("MediaRecorder.isTypeSupported failed for", type, error);
+          return false;
+        }
+      });
+
+      const recorderOptions: MediaRecorderOptions = {
         videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
         audioBitsPerSecond: 32000, // 32kbps audio for WhatsApp
-      });
+      };
+
+      if (supportedMimeType) {
+        recorderOptions.mimeType = supportedMimeType;
+      }
+
+      const mediaRecorder = new MediaRecorder(stream, recorderOptions);
 
       const chunks: Blob[] = [];
 
@@ -1843,17 +1867,21 @@ export default function Create() {
       mediaRecorder.onstop = async () => {
         console.log("📱 Mobile video recording stopped");
 
-        // Create video blob
-        const videoBlob = new Blob(chunks, { type: "video/mp4" });
+        const effectiveMimeType =
+          mediaRecorder.mimeType ||
+          recorderOptions.mimeType ||
+          "video/webm";
 
-        // Validate video
+        const videoBlob = new Blob(chunks, { type: effectiveMimeType });
+
         if (videoBlob.size < 1000) {
           console.error("❌ Video too small, might be corrupted");
           setVideoGenerationError("Video recording failed. Please try again.");
           return;
         }
 
-        // Create video URL
+        updateRecordedMimeType(effectiveMimeType);
+
         const videoUrl = URL.createObjectURL(videoBlob);
         setRecordedVideoBlob(videoBlob);
         setRecordedVideoUrl(videoUrl);
@@ -1865,7 +1893,6 @@ export default function Create() {
           sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
         });
 
-        // Upload to Cloudinary
         try {
           console.log("📤 Uploading mobile video to Cloudinary...");
           const cloudinaryUrl = await uploadVideoToCloudinary(videoBlob);
