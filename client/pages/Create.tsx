@@ -4188,7 +4188,8 @@ export default function Create() {
                     </p>
                     {isMobile ? (
                       <p className="text-xs text-orange-700">
-                        Use the Download Postcard Image button above to save your postcard.
+                        Use the Download Postcard Image button above to save
+                        your postcard.
                       </p>
                     ) : (
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
