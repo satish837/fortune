@@ -2859,11 +2859,11 @@ export default function Create() {
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text().catch(() => "");
           console.warn(
-            "❌ Server upload failed, trying unsigned fallback:",
+            "❌ Server upload failed, switching to direct Cloudinary upload:",
             errorText,
           );
-          const unsignedUrl = await tryUnsignedUpload();
-          return unsignedUrl;
+          const directUrl = await trySignedDirectUpload();
+          return directUrl;
         }
         const data = await uploadResponse.json();
         const url = data.secure_url || data.originalUrl || data.secureUrl;
@@ -2873,11 +2873,11 @@ export default function Create() {
         return url;
       } catch (serverErr) {
         console.warn(
-          "⚠️ Server upload error, trying unsigned fallback:",
+          "⚠️ Server upload error, switching to direct Cloudinary upload:",
           serverErr,
         );
-        const unsignedUrl = await tryUnsignedUpload();
-        return unsignedUrl;
+        const directUrl = await trySignedDirectUpload();
+        return directUrl;
       }
     } catch (error) {
       console.error("❌ Error uploading video to Cloudinary:", error);
