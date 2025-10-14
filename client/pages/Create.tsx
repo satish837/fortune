@@ -1794,8 +1794,7 @@ export default function Create() {
     ctx: CanvasRenderingContext2D,
     backgroundVideo: HTMLVideoElement,
     rect: DOMRect,
-    scale: number,
-    whatsappSize: number,
+    metrics: VideoCanvasMetrics,
   ) => {
     try {
       console.log("📱 Initializing mobile video recorder...");
@@ -1848,7 +1847,7 @@ export default function Create() {
           const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
           setCloudinaryVideoUrl(cloudinaryUrl);
           console.log(
-            "���� Mobile video uploaded to Cloudinary successfully!",
+            "�� Mobile video uploaded to Cloudinary successfully!",
             cloudinaryUrl,
           );
         } catch (error) {
@@ -2414,7 +2413,7 @@ export default function Create() {
       } else if (MediaRecorder.isTypeSupported("video/webm;codecs=vp8")) {
         mimeType = "video/webm;codecs=vp8";
         console.log(
-          "⚠�� MP4 not supported, using WebM VP8 - Limited social media compatibility",
+          "⚠️ MP4 not supported, using WebM VP8 - Limited social media compatibility",
         );
       } else {
         console.warn("❌ No supported video format found, using default");
@@ -3925,7 +3924,7 @@ export default function Create() {
 
                   <div className="mt-4 text-center">
                     <p className="text-sm text-orange-700">
-                      ���� <strong>Tip:</strong> For Instagram and TikTok,
+                      💡 <strong>Tip:</strong> For Instagram and TikTok,
                       download the video first, then upload it to the app!
                     </p>
                   </div>
