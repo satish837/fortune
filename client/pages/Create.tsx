@@ -1768,7 +1768,7 @@ export default function Create() {
       const videoUrl = URL.createObjectURL(videoBlob);
       setRecordedVideoUrl(videoUrl);
 
-      console.log("✅ Video recording completed with canvas-record:", {
+      console.log("�� Video recording completed with canvas-record:", {
         size: videoBlob.size,
         type: videoBlob.type,
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
@@ -3817,7 +3817,7 @@ export default function Create() {
                           style={{ zIndex: 1002 }}
                         >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-sm md:text-2xl font-semibold leading-tight">
+                            <p className="text-[0.4375rem] leading-[0.625rem] md:text-2xl md:leading-tight font-semibold">
                               {greeting}
                             </p>
                           </div>
@@ -3878,13 +3878,6 @@ export default function Create() {
                   }}
                 >
                   Generate again
-                </Button>
-
-                <Button
-                  onClick={copyVideoLink}
-                  className="h-11 px-6 bg-blue-500 hover:bg-blue-600 text-white text-sm"
-                >
-                  Copy Video URL
                 </Button>
               </div>
 
