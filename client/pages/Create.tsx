@@ -1867,7 +1867,7 @@ export default function Create() {
         // Upload to Cloudinary
         try {
           console.log("📤 Uploading mobile video to Cloudinary...");
-          const cloudinaryUrl = await uploadVideoToCloudinary(videoUrl);
+          const cloudinaryUrl = await uploadVideoToCloudinary(videoBlob);
           setCloudinaryVideoUrl(cloudinaryUrl);
           console.log(
             "�� Mobile video uploaded to Cloudinary successfully!",
