@@ -2492,7 +2492,7 @@ export default function Create() {
             ctx.fillRect(0, rect.height - 50, rect.width, 50);
 
             ctx.fillStyle = "white";
-            ctx.font = "bold 28px Arial";
+            ctx.font = "bold 18px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
 
