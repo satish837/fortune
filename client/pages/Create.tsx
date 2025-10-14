@@ -4073,6 +4073,7 @@ export default function Create() {
                         <img
                           src={result}
                           alt="result"
+                          data-generated-image
                           className="object-contain absolute md:top-[28%] top-[30%]"
                           style={{
                             background: "transparent",
