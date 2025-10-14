@@ -1757,6 +1757,7 @@ export default function Create() {
 
       // Create video URL
       const videoUrl = URL.createObjectURL(videoBlob);
+      setRecordedVideoBlob(videoBlob);
       setRecordedVideoUrl(videoUrl);
 
       console.log("�� Video recording completed with canvas-record:", {
