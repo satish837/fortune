@@ -2905,7 +2905,10 @@ export default function Create() {
         try {
           targetUrl = await uploadVideoToCloudinary(recordedVideoUrl);
         } catch (uploadErr) {
-          console.error("❌ Unable to upload video before opening link:", uploadErr);
+          console.error(
+            "❌ Unable to upload video before opening link:",
+            uploadErr,
+          );
           setUploadError(
             uploadErr instanceof Error ? uploadErr.message : "Upload failed",
           );
