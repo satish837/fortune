@@ -2728,39 +2728,120 @@ export default function Create() {
         sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
       });
 
-      // Helper: unsigned client-side upload fallback (avoids server body-size limits)
-      const tryUnsignedUpload = async (): Promise<string> => {
-        if (!cloudinaryConfig?.cloudName || !cloudinaryConfig?.uploadPreset) {
-          throw new Error("Cloudinary unsigned preset not configured");
+      type CloudinarySignatureResponse = {
+        cloudName: string;
+        apiKey: string;
+        timestamp: number;
+        signature: string;
+        folder?: string | null;
+        publicId?: string | null;
+        resourceType?: string | null;
+        eager?: string | null;
+        transformation?: string | null;
+      };
+
+      const requestSignedUploadParams =
+        async (): Promise<CloudinarySignatureResponse> => {
+          const response = await fetch("/api/cloudinary-signature", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              resourceType: "video",
+              folder: "diwali-postcards/videos",
+            }),
+          });
+          if (!response.ok) {
+            const text = await response.text().catch(() => "");
+            throw new Error(
+              `Failed to retrieve Cloudinary signature: ${response.status} - ${text}`,
+            );
+          }
+          return (await response.json()) as CloudinarySignatureResponse;
+        };
+
+      const buildOptimizedVideoUrlFromUpload = (
+        uploadData: any,
+        cloudName: string,
+      ) => {
+        const secure = uploadData?.secure_url || uploadData?.url;
+        const publicId: string = uploadData?.public_id || "";
+        if (!publicId) {
+          return secure;
         }
+        const segments = publicId.split("/");
+        const fileName = segments.pop();
+        if (!fileName) {
+          return secure;
+        }
+        const folderSegment =
+          segments.length > 0 ? `${segments.join("/")}/` : "";
+        const versionSegment = uploadData?.version
+          ? `/v${uploadData.version}`
+          : "";
+        return `https://res.cloudinary.com/${cloudName}/video/upload/f_mp4,q_auto:best${versionSegment}/${folderSegment}${fileName}.mp4`;
+      };
+
+      const trySignedDirectUpload = async (): Promise<string> => {
+        const signaturePayload = await requestSignedUploadParams();
+        if (!signaturePayload?.cloudName || !signaturePayload?.apiKey) {
+          throw new Error("Cloudinary signature response incomplete");
+        }
+
+        const signedExtension =
+          getFileExtensionFromMime(
+            (videoBlob as Blob).type || recordedMimeTypeRef.current,
+          ) || "mp4";
+
         const fd = new FormData();
-        const unsignedExtension = getFileExtensionFromMime(
-          (videoBlob as Blob).type || recordedMimeTypeRef.current,
-        );
         fd.append(
           "file",
           videoBlob as Blob,
-          `festive-postcard-${Date.now()}.${unsignedExtension}`,
+          `festive-postcard-${Date.now()}.${signedExtension}`,
         );
-        fd.append("upload_preset", cloudinaryConfig.uploadPreset);
+        fd.append("api_key", signaturePayload.apiKey);
+        fd.append("timestamp", String(signaturePayload.timestamp));
+        fd.append("signature", signaturePayload.signature);
+        if (signaturePayload.folder) {
+          fd.append("folder", signaturePayload.folder);
+        }
+        if (signaturePayload.publicId) {
+          fd.append("public_id", signaturePayload.publicId);
+        }
+        if (signaturePayload.eager) {
+          fd.append("eager", signaturePayload.eager);
+        }
+        if (signaturePayload.transformation) {
+          fd.append("transformation", signaturePayload.transformation);
+        }
         fd.append("resource_type", "video");
-        const unsignedRes = await fetch(
-          `https://api.cloudinary.com/v1_1/${cloudinaryConfig.cloudName}/video/upload`,
+
+        const uploadRes = await fetch(
+          `https://api.cloudinary.com/v1_1/${signaturePayload.cloudName}/video/upload`,
           { method: "POST", body: fd },
         );
-        if (!unsignedRes.ok) {
-          const txt = await unsignedRes.text().catch(() => "");
+        if (!uploadRes.ok) {
+          const txt = await uploadRes.text().catch(() => "");
           throw new Error(
-            `Unsigned upload failed: ${unsignedRes.status} - ${txt}`,
+            `Signed direct upload failed: ${uploadRes.status} - ${txt}`,
           );
         }
-        const json = await unsignedRes.json();
-        const url = json.secure_url || json.url;
-        if (!url) throw new Error("Unsigned upload returned no URL");
-        console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
-        setCloudinaryVideoUrl(url);
+        const uploadJson = await uploadRes.json();
+        const optimizedUrl = buildOptimizedVideoUrlFromUpload(
+          uploadJson,
+          signaturePayload.cloudName,
+        );
+        const finalUrl =
+          optimizedUrl || uploadJson.secure_url || uploadJson.url;
+        if (!finalUrl) {
+          throw new Error("Signed direct upload returned no URL");
+        }
+        console.log(
+          "✅ Video uploaded to Cloudinary (direct signed):",
+          finalUrl,
+        );
+        setCloudinaryVideoUrl(finalUrl);
         updateRecordedMimeType("video/mp4");
-        return url;
+        return finalUrl;
       };
 
       // First try server-side signed upload (preferred)
@@ -2782,11 +2863,11 @@ export default function Create() {
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text().catch(() => "");
           console.warn(
-            "❌ Server upload failed, trying unsigned fallback:",
+            "❌ Server upload failed, switching to direct Cloudinary upload:",
             errorText,
           );
-          const unsignedUrl = await tryUnsignedUpload();
-          return unsignedUrl;
+          const directUrl = await trySignedDirectUpload();
+          return directUrl;
         }
         const data = await uploadResponse.json();
         const url = data.secure_url || data.originalUrl || data.secureUrl;
@@ -2796,11 +2877,11 @@ export default function Create() {
         return url;
       } catch (serverErr) {
         console.warn(
-          "⚠️ Server upload error, trying unsigned fallback:",
+          "⚠️ Server upload error, switching to direct Cloudinary upload:",
           serverErr,
         );
-        const unsignedUrl = await tryUnsignedUpload();
-        return unsignedUrl;
+        const directUrl = await trySignedDirectUpload();
+        return directUrl;
       }
     } catch (error) {
       console.error("❌ Error uploading video to Cloudinary:", error);

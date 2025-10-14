@@ -13,6 +13,7 @@ import { handleExistingUserOTP } from "./routes/existing-user-otp";
 import { handleTinyPNGConfig } from "./routes/tinypng-config";
 import { handleOptimizeImage } from "./routes/optimize-image";
 import { handleCloudinaryConfig } from "./routes/cloudinary-config";
+import { handleCloudinarySignature } from "./routes/cloudinary-signature";
 import { handleUploadVideo } from "./routes/upload-video";
 
 const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
@@ -35,6 +36,7 @@ export function createServer() {
 
   app.get("/api/demo", handleDemo);
   app.get("/api/cloudinary-config", handleCloudinaryConfig);
+  app.post("/api/cloudinary-signature", handleCloudinarySignature);
   app.post("/api/generate", handleGenerate);
   app.get("/api/test-clipdrop", handleTestClipdrop);
   app.get("/api/test-flux-kontext", handleTestFluxKontext);
