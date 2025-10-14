@@ -2897,7 +2897,7 @@ export default function Create() {
   };
 
   const downloadVideo = () => {
-    if (!recordedVideoUrl) {
+    if (!recordedVideoUrl && !recordedVideoBlob) {
       return;
     }
 
@@ -2908,12 +2908,21 @@ export default function Create() {
           })
         : null;
 
-    const mime = chunkBlob?.type || recordedMimeTypeRef.current || "video/mp4";
+    const sourceBlob = chunkBlob ?? recordedVideoBlob ?? null;
+    const mime = sourceBlob?.type || recordedMimeTypeRef.current || "video/mp4";
     const extension = getFileExtensionFromMime(mime);
     updateRecordedMimeType(mime);
 
-    const href = chunkBlob ? URL.createObjectURL(chunkBlob) : recordedVideoUrl;
-    const shouldRevoke = Boolean(chunkBlob);
+    const href =
+      recordedVideoUrl ||
+      (sourceBlob ? URL.createObjectURL(sourceBlob) : null);
+
+    if (!href) {
+      console.error("No video available for download");
+      return;
+    }
+
+    const shouldRevoke = !recordedVideoUrl && Boolean(sourceBlob);
 
     try {
       const link = document.createElement("a");
@@ -2938,7 +2947,10 @@ export default function Create() {
 
     void (async () => {
       try {
-        await uploadVideoToCloudinary(chunkBlob ?? recordedVideoUrl);
+        const uploadSource = sourceBlob ?? recordedVideoUrl;
+        if (uploadSource) {
+          await uploadVideoToCloudinary(uploadSource);
+        }
       } catch (error) {
         console.error("❌ Failed to upload video after download:", error);
       } finally {
