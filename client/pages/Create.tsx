@@ -432,6 +432,7 @@ export default function Create() {
   const [generationProgress, setGenerationProgress] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
+  const [recordedVideoBlob, setRecordedVideoBlob] = useState<Blob | null>(null);
   const [cloudinaryVideoUrl, setCloudinaryVideoUrl] = useState<string | null>(
     null,
   );
