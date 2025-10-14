@@ -17,11 +17,12 @@
     "build:server": "vite build --config vite.config.server.ts",
     "start": "node dist/server/node-build.mjs",
     "vercel-build": "npm run build:client",
-    "test": "vitest --run",
+    "test": "vitest --run; node .github/setup.js",
     "format.fix": "prettier --write .",
     "typecheck": "tsc"
   },
   "dependencies": {
+    "@fortawesome/fontawesome-svg-core": "^7.1.0",
     "@fortawesome/free-brands-svg-icons": "^7.1.0",
     "@fortawesome/react-fontawesome": "^3.1.0",
     "@getbrevo/brevo": "^3.0.1",
