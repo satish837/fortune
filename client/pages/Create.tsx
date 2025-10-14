@@ -2740,10 +2740,13 @@ export default function Create() {
           throw new Error("Cloudinary unsigned preset not configured");
         }
         const fd = new FormData();
+        const unsignedExtension = getFileExtensionFromMime(
+          (videoBlob as Blob).type || recordedMimeTypeRef.current,
+        );
         fd.append(
           "file",
           videoBlob as Blob,
-          `festive-postcard-${Date.now()}.mp4`,
+          `festive-postcard-${Date.now()}.${unsignedExtension}`,
         );
         fd.append("upload_preset", cloudinaryConfig.uploadPreset);
         fd.append("resource_type", "video");
