@@ -241,7 +241,7 @@ const BACKGROUNDS = [
     video: "/background/2.mp4",
     fallback: "✨",
   },
-  { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "���️" },
+  { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "🕯️" },
   {
     id: "4",
     name: "Diwali Sparkle",
@@ -2716,7 +2716,7 @@ export default function Create() {
             recordedChunksRef.current.length > 0
           ) {
             videoBlob = new Blob(recordedChunksRef.current, {
-              type: "video/mp4",
+              type: recordedMimeTypeRef.current || "video/mp4",
             });
           }
         }
@@ -2775,7 +2775,7 @@ export default function Create() {
           },
           body: arrayBuffer,
         });
-        console.log("���� Upload response status:", uploadResponse.status);
+        console.log("📡 Upload response status:", uploadResponse.status);
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text().catch(() => "");
           console.warn(
