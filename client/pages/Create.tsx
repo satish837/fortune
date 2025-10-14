@@ -3877,7 +3877,7 @@ export default function Create() {
                     : downloading
                       ? "Uploading to Cloudinary..."
                       : recordedVideoUrl
-                        ? "Open Video"
+                        ? "Download Video"
                         : "Start Recording"}
                 </Button>
                 <Button
