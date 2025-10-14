@@ -1263,16 +1263,31 @@ export default function Create() {
           return;
         }
 
-        // Set WhatsApp-compatible dimensions
-        canvas.width = 512;
-        canvas.height = 512;
+        canvas.width = VIDEO_WIDTH;
+        canvas.height = VIDEO_HEIGHT;
 
-        // Create MediaRecorder with strict WhatsApp settings
-        const stream = canvas.captureStream(15); // 15 FPS for WhatsApp
+        let drawWidth = VIDEO_WIDTH;
+        let drawHeight = VIDEO_HEIGHT;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          const scale = Math.min(
+            VIDEO_WIDTH / video.videoWidth,
+            VIDEO_HEIGHT / video.videoHeight,
+          );
+          drawWidth = video.videoWidth * scale;
+          drawHeight = video.videoHeight * scale;
+          offsetX = (VIDEO_WIDTH - drawWidth) / 2;
+          offsetY = (VIDEO_HEIGHT - drawHeight) / 2;
+        }
+
+        // Create MediaRecorder with strict sharing-friendly settings
+        const stream = canvas.captureStream(15);
         const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
-          videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-          audioBitsPerSecond: 32000, // 32kbps audio
+          mimeType: 'video/mp4; codecs="avc1.42E01E"',
+          videoBitsPerSecond: 200000,
+          audioBitsPerSecond: 32000,
         });
 
         const chunks: Blob[] = [];
@@ -1287,19 +1302,17 @@ export default function Create() {
           const optimizedBlob = new Blob(chunks, { type: "video/mp4" });
           const optimizedUrl = URL.createObjectURL(optimizedBlob);
 
-          console.log("📱 WhatsApp-optimized video:", {
+          console.log("📱 Optimized video:", {
             originalSize: videoBlob.size,
             optimizedSize: optimizedBlob.size,
             sizeInMB: (optimizedBlob.size / (1024 * 1024)).toFixed(2),
             duration: video.duration,
-            width: video.videoWidth,
-            height: video.videoHeight,
+            width: VIDEO_WIDTH,
+            height: VIDEO_HEIGHT,
           });
 
-          // Validate WhatsApp compatibility
           if (optimizedBlob.size > 16 * 1024 * 1024) {
-            // 16MB limit
-            console.warn("⚠️ Video too large for WhatsApp, using original");
+            console.warn("⚠️ Video too large after optimization, using original");
             resolve(URL.createObjectURL(videoBlob));
           } else {
             resolve(optimizedUrl);
@@ -1317,14 +1330,13 @@ export default function Create() {
 
         const drawFrame = (currentTime: number) => {
           if (currentTime - lastFrameTime >= frameInterval) {
-            // Draw video frame to canvas
-            ctx.drawImage(video, 0, 0, 512, 512);
+            ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+            ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
             frameCount++;
             lastFrameTime = currentTime;
           }
 
-          // Check if video has ended
           if (video.ended || video.paused) {
             mediaRecorder.stop();
             return;
