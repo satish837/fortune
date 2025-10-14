@@ -1247,7 +1247,7 @@ export default function Create() {
           // Draw the greeting text
           if (greeting) {
             ctx.fillStyle = "#ffffff";
-            ctx.font = "bold 20px Arial";
+            ctx.font = getGreetingFont();
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
             ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
@@ -1549,7 +1549,7 @@ export default function Create() {
             // Draw the greeting text
             if (greeting) {
               ctx.fillStyle = "#ffffff";
-              ctx.font = "bold 20px Arial";
+              ctx.font = getGreetingFont();
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
               ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
@@ -2011,7 +2011,7 @@ export default function Create() {
               // Draw greeting text
               if (greeting) {
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 20px Arial";
+                ctx.font = getGreetingFont();
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
@@ -2309,7 +2309,7 @@ export default function Create() {
               // Draw the greeting text
               if (greeting) {
                 ctx.fillStyle = "#ffffff";
-                ctx.font = "bold 20px Arial";
+                ctx.font = getGreetingFont();
                 ctx.textAlign = "center";
                 ctx.textBaseline = "middle";
                 ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
