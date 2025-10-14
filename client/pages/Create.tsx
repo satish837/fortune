@@ -2638,7 +2638,11 @@ export default function Create() {
           throw new Error("Cloudinary unsigned preset not configured");
         }
         const fd = new FormData();
-        fd.append("file", videoBlob as Blob, `festive-postcard-${Date.now()}.mp4`);
+        fd.append(
+          "file",
+          videoBlob as Blob,
+          `festive-postcard-${Date.now()}.mp4`,
+        );
         fd.append("upload_preset", cloudinaryConfig.uploadPreset);
         fd.append("resource_type", "video");
         const unsignedRes = await fetch(
@@ -2647,7 +2651,9 @@ export default function Create() {
         );
         if (!unsignedRes.ok) {
           const txt = await unsignedRes.text().catch(() => "");
-          throw new Error(`Unsigned upload failed: ${unsignedRes.status} - ${txt}`);
+          throw new Error(
+            `Unsigned upload failed: ${unsignedRes.status} - ${txt}`,
+          );
         }
         const json = await unsignedRes.json();
         const url = json.secure_url || json.url;
@@ -2672,7 +2678,10 @@ export default function Create() {
         console.log("📡 Upload response status:", uploadResponse.status);
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text().catch(() => "");
-          console.warn("❌ Server upload failed, trying unsigned fallback:", errorText);
+          console.warn(
+            "❌ Server upload failed, trying unsigned fallback:",
+            errorText,
+          );
           const unsignedUrl = await tryUnsignedUpload();
           return unsignedUrl;
         }
@@ -2682,7 +2691,10 @@ export default function Create() {
         setCloudinaryVideoUrl(url);
         return url;
       } catch (serverErr) {
-        console.warn("⚠️ Server upload error, trying unsigned fallback:", serverErr);
+        console.warn(
+          "⚠️ Server upload error, trying unsigned fallback:",
+          serverErr,
+        );
         const unsignedUrl = await tryUnsignedUpload();
         return unsignedUrl;
       }
