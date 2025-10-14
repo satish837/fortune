@@ -468,7 +468,40 @@ export default function Create() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const recordedMimeTypeRef = useRef<string>("video/mp4");
   const manualLoaderControlRef = useRef(false);
+
+  const updateRecordedMimeType = useCallback((mime?: string | null) => {
+    const normalized =
+      typeof mime === "string" && mime.trim().length > 0 ? mime : "video/mp4";
+    recordedMimeTypeRef.current = normalized;
+  }, []);
+
+  const getFileExtensionFromMime = (mime?: string | null) => {
+    if (!mime) return "mp4";
+    const lowerMime = mime.toLowerCase();
+    if (lowerMime.includes("webm")) return "webm";
+    if (lowerMime.includes("ogg")) return "ogg";
+    if (lowerMime.includes("3gpp")) return "3gp";
+    if (lowerMime.includes("quicktime")) return "mov";
+    if (lowerMime.includes("matroska") || lowerMime.includes("mkv")) {
+      return "mkv";
+    }
+    if (lowerMime.includes("avi")) return "avi";
+    return "mp4";
+  };
+
+  const getGreetingFont = useCallback(
+    (baseSize = 20) => {
+      const minimumSize = 14;
+      const adjustedSize = Math.max(
+        minimumSize,
+        Math.round(baseSize * (isMobile ? 0.8 : 1)),
+      );
+      return `bold ${adjustedSize}px Arial`;
+    },
+    [isMobile],
+  );
 
   const selectedBackground = useMemo(
     () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
