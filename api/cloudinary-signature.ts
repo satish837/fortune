@@ -60,6 +60,7 @@ export default function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     const signatureBase = Object.keys(params)
+      .filter((key) => key !== "resource_type")
       .sort()
       .map((key) => `${key}=${params[key]}`)
       .join("&");
