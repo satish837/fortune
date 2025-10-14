@@ -1868,9 +1868,7 @@ export default function Create() {
         console.log("📱 Mobile video recording stopped");
 
         const effectiveMimeType =
-          mediaRecorder.mimeType ||
-          recorderOptions.mimeType ||
-          "video/webm";
+          mediaRecorder.mimeType || recorderOptions.mimeType || "video/webm";
 
         const videoBlob = new Blob(chunks, { type: effectiveMimeType });
 
@@ -2941,8 +2939,7 @@ export default function Create() {
     updateRecordedMimeType(mime);
 
     const href =
-      recordedVideoUrl ||
-      (sourceBlob ? URL.createObjectURL(sourceBlob) : null);
+      recordedVideoUrl || (sourceBlob ? URL.createObjectURL(sourceBlob) : null);
 
     if (!href) {
       console.error("No video available for download");
