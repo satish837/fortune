@@ -38,11 +38,27 @@ export const handleUploadVideo: RequestHandler = async (req, res) => {
       videoBuffer = Buffer.from(base64, "base64");
       originalFilename = body.fileName || originalFilename;
     } else if (contentType.includes("application/octet-stream")) {
-      const raw = req.body as Buffer | undefined;
-      if (!raw || !(raw instanceof Buffer) || raw.length === 0) {
+      const rawBody = req.body as Buffer | ArrayBuffer | Uint8Array | undefined;
+
+      if (!rawBody) {
         return res.status(400).json({ error: "Raw binary body required" });
       }
-      videoBuffer = Buffer.from(raw);
+
+      if (Buffer.isBuffer(rawBody)) {
+        videoBuffer = rawBody;
+      } else if (rawBody instanceof ArrayBuffer) {
+        videoBuffer = Buffer.from(rawBody);
+      } else if (ArrayBuffer.isView(rawBody)) {
+        const view = rawBody as ArrayBufferView;
+        videoBuffer = Buffer.from(view.buffer, view.byteOffset, view.byteLength);
+      } else {
+        return res.status(400).json({ error: "Unsupported binary payload type" });
+      }
+
+      if (!videoBuffer || videoBuffer.length === 0) {
+        return res.status(400).json({ error: "Video payload was empty" });
+      }
+
       originalFilename = (
         req.headers["x-filename"] || originalFilename
       ).toString();
