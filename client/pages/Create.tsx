@@ -3223,6 +3223,7 @@ export default function Create() {
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
     manualLoaderControlRef.current = true;
+    generationProgressRef.current = 0;
     setLoading(true);
     setResult(null);
     setGenerationStep(0);
@@ -3256,7 +3257,7 @@ export default function Create() {
         setIsFading(false);
 
         const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70;
-        setGenerationProgress(stepProgress);
+        await animateProgress(stepProgress);
 
         await delay(LOADER_STEP_HOLD_MS);
         setIsFading(true);
@@ -3264,7 +3265,7 @@ export default function Create() {
       }
 
       setIsFading(false);
-      await animateProgress(70, 90, PROGRESS_INTERMEDIATE_DURATION_MS);
+      await animateProgress(90);
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -3281,7 +3282,7 @@ export default function Create() {
       }
       const json = await res.json();
 
-      await animateProgress(90, 100, PROGRESS_FINAL_DURATION_MS);
+      await animateProgress(100);
 
       await delay(LOADER_STEP_FADE_MS);
 
