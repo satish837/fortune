@@ -2439,6 +2439,8 @@ export default function Create() {
         console.warn("❌ No supported video format found, using default");
       }
 
+      updateRecordedMimeType(mimeType);
+
       // Show user warning if MP4 is not supported
       if (!mp4Supported) {
         console.warn(
