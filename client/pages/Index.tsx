@@ -4,7 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import { BarChart3 } from "lucide-react";
 
 interface FormState {
@@ -13,6 +19,26 @@ interface FormState {
   phone: string;
   handle?: string;
   acceptTerms: boolean;
+}
+
+const JSON_CONTENT_TYPE = /application\/json/i;
+
+async function readJsonBody<T>(response: Response): Promise<T | null> {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (!JSON_CONTENT_TYPE.test(contentType)) {
+    return null;
+  }
+
+  try {
+    const raw = await response.clone().text();
+    if (!raw?.trim()) {
+      return null;
+    }
+    return JSON.parse(raw) as T;
+  } catch (error) {
+    console.error("Failed to parse JSON response", error);
+    return null;
+  }
 }
 
 const TERMS_AND_CONDITIONS = `Terms & Conditions – #DiwaliKaFortune Postcard Experience
@@ -126,7 +152,13 @@ By clicking "Let's Begin" and uploading an image, participants confirm that they
 
 export default function Index() {
   const navigate = useNavigate();
-  const [form, setForm] = useState<FormState>({ name: "", email: "", phone: "", handle: "", acceptTerms: false });
+  const [form, setForm] = useState<FormState>({
+    name: "",
+    email: "",
+    phone: "",
+    handle: "",
+    acceptTerms: false,
+  });
   const [ready, setReady] = useState(false);
   const [loading, setLoading] = useState(false);
   const [isExistingUser, setIsExistingUser] = useState(false);
@@ -155,35 +187,33 @@ export default function Index() {
 
     setLoading(true);
     try {
-      // Send OTP to email
-      const response = await fetch('/api/send-otp', {
-        method: 'POST',
+      const response = await fetch("/api/send-otp", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
           email: form.email,
-          name: form.name
+          name: form.name,
         }),
       });
 
-      const data = await response.json();
+      const data = await readJsonBody<{ error?: string }>(response);
 
       if (response.ok) {
-        // Navigate to OTP verification page with user data
-        navigate("/verify-otp", { 
+        navigate("/verify-otp", {
           state: {
             email: form.email,
             name: form.name,
             phone: form.phone,
-            handle: form.handle
-          }
+            handle: form.handle,
+          },
         });
       } else {
-        alert(data.error || 'Failed to send OTP. Please try again.');
+        alert(data?.error || "Failed to send OTP. Please try again.");
       }
     } catch (error) {
-      alert('Network error. Please try again.');
+      alert("Network error. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -196,35 +226,45 @@ export default function Index() {
     setExistingUserLoading(true);
     try {
       // Check if user exists and send OTP
-      const response = await fetch('/api/existing-user-otp', {
-        method: 'POST',
+      const response = await fetch("/api/existing-user-otp", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          email: existingUserEmail
+          email: existingUserEmail,
         }),
       });
 
-      const data = await response.json();
+      const data = await readJsonBody<{
+        error?: string;
+        userData?: {
+          name: string;
+          email: string;
+          phone: string;
+          handle?: string;
+        };
+      }>(response);
 
-      if (response.ok) {
-        // Navigate to OTP verification page with existing user data
-        navigate("/verify-otp", { 
+      if (response.ok && data?.userData) {
+        navigate("/verify-otp", {
           state: {
             email: data.userData.email,
             name: data.userData.name,
             phone: data.userData.phone,
             handle: data.userData.handle,
-            isExistingUser: true
-          }
+            isExistingUser: true,
+          },
         });
       } else {
-        setExistingUserError(data.error || 'User not found or failed to send OTP. Please try again.');
+        setExistingUserError(
+          data?.error ||
+            "User not found or failed to send OTP. Please try again.",
+        );
       }
     } catch (error) {
-      console.error('Existing user OTP error:', error);
-      setExistingUserError('Network error. Please try again.');
+      console.error("Existing user OTP error:", error);
+      setExistingUserError("Network error. Please try again.");
     } finally {
       setExistingUserLoading(false);
     }
@@ -240,10 +280,16 @@ export default function Index() {
             <img src="/fortune-logo.png" alt="logo" className="w-217 h-73" />
           </div>
           <h1 className="text-4xl md:text-5xl font-extrabold text-orange-900 leading-tight">
-          Create Your Diwali Postcard And Celebrate With
+            Create Your Diwali Postcard And Celebrate With
           </h1>
           <div className="text-orange-800/80 max-w-xl">
-          <img src="/home-diwali-logo.png" alt="diwali-postcard" width={200} height={136} className="mx-auto" />
+            <img
+              src="/home-diwali-logo.png"
+              alt="diwali-postcard"
+              width={200}
+              height={136}
+              className="mx-auto"
+            />
           </div>
         </div>
 
@@ -255,8 +301,8 @@ export default function Index() {
               onClick={() => setIsExistingUser(false)}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 !isExistingUser
-                  ? 'bg-orange-600 text-white'
-                  : 'text-orange-600 hover:bg-orange-100'
+                  ? "bg-orange-600 text-white"
+                  : "text-orange-600 hover:bg-orange-100"
               }`}
             >
               New User
@@ -266,8 +312,8 @@ export default function Index() {
               onClick={() => setIsExistingUser(true)}
               className={`flex-1 py-2 px-4 rounded-md text-sm font-medium transition-colors ${
                 isExistingUser
-                  ? 'bg-orange-600 text-white'
-                  : 'text-orange-600 hover:bg-orange-100'
+                  ? "bg-orange-600 text-white"
+                  : "text-orange-600 hover:bg-orange-100"
               }`}
             >
               Existing User
@@ -277,85 +323,115 @@ export default function Index() {
           {/* New User Form */}
           {!isExistingUser && (
             <form onSubmit={onSubmit} className="grid gap-5">
-            <div className="grid gap-2">
-              <Label htmlFor="name">Name</Label>
-              <Input id="name" value={form.name} onChange={(e)=>setForm({...form,name:e.target.value})} required placeholder="Your name" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="email">Email ID</Label>
-              <Input id="email" type="email" value={form.email} onChange={(e)=>setForm({...form,email:e.target.value})} required placeholder="you@example.com" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="phone">Phone Number</Label>
-              <Input id="phone" value={form.phone} onChange={(e)=>setForm({...form,phone:e.target.value})} required placeholder="+91 90000 00000" />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="handle">Instagram/Facebook ID (optional)</Label>
-              <Input id="handle" value={form.handle} onChange={(e)=>setForm({...form,handle:e.target.value})} placeholder="@yourhandle" />
-            </div>
-            <div className="flex items-center space-x-2">
-              <Checkbox
-                id="acceptTerms"
-                checked={form.acceptTerms}
-                onCheckedChange={(checked) => setForm({ ...form, acceptTerms: checked as boolean })}
-              />
-              <label htmlFor="acceptTerms" className="text-sm text-gray-700">
-                I accept the{" "}
-                <Dialog>
-                  <DialogTrigger asChild>
-                    <button 
-                      type="button"
-                      className="text-orange-600 hover:text-orange-700 underline"
+              <div className="grid gap-2">
+                <Label htmlFor="name">Name</Label>
+                <Input
+                  id="name"
+                  value={form.name}
+                  onChange={(e) => setForm({ ...form, name: e.target.value })}
+                  required
+                  placeholder="Your name"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="email">Email ID</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={form.email}
+                  onChange={(e) => setForm({ ...form, email: e.target.value })}
+                  required
+                  placeholder="you@example.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="phone">Phone Number</Label>
+                <Input
+                  id="phone"
+                  value={form.phone}
+                  onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                  required
+                  placeholder="+91 90000 00000"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="handle">Instagram/Facebook ID (optional)</Label>
+                <Input
+                  id="handle"
+                  value={form.handle}
+                  onChange={(e) => setForm({ ...form, handle: e.target.value })}
+                  placeholder="@yourhandle"
+                />
+              </div>
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="acceptTerms"
+                  checked={form.acceptTerms}
+                  onCheckedChange={(checked) =>
+                    setForm({ ...form, acceptTerms: checked as boolean })
+                  }
+                />
+                <label htmlFor="acceptTerms" className="text-sm text-gray-700">
+                  I accept the{" "}
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <button
+                        type="button"
+                        className="text-orange-600 hover:text-orange-700 underline"
+                      >
+                        Terms and Conditions
+                      </button>
+                    </DialogTrigger>
+                    <DialogContent
+                      className="max-w-4xl max-h-[80vh] overflow-y-auto"
+                      onOpenAutoFocus={(e) => e.preventDefault()}
                     >
-                      Terms and Conditions
-                    </button>
-                  </DialogTrigger>
-                  <DialogContent 
-                    className="max-w-4xl max-h-[80vh] overflow-y-auto" 
-                    onOpenAutoFocus={(e) => e.preventDefault()}
-                  >
-                    <DialogHeader>
-                      <DialogTitle className="text-xl font-bold text-orange-900">
-                        Terms & Conditions
-                      </DialogTitle>
-                    </DialogHeader>
-                    <div className="mt-4">
-                      <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
-                        {TERMS_AND_CONDITIONS}
-                      </pre>
-                    </div>
-                  </DialogContent>
-                </Dialog>
-              </label>
-            </div>
-            <Button 
-              className="mt-2 h-12 text-base bg-orange-600 hover:bg-orange-700" 
-              disabled={loading}
-            >
-              {loading ? "Sending OTP..." : "Let's Begin →"}
-            </Button>
-          </form>
+                      <DialogHeader>
+                        <DialogTitle className="text-xl font-bold text-orange-900">
+                          Terms & Conditions
+                        </DialogTitle>
+                      </DialogHeader>
+                      <div className="mt-4">
+                        <pre className="whitespace-pre-wrap text-sm text-gray-700 leading-relaxed font-sans">
+                          {TERMS_AND_CONDITIONS}
+                        </pre>
+                      </div>
+                    </DialogContent>
+                  </Dialog>
+                </label>
+              </div>
+              <Button
+                className="mt-2 h-12 text-base bg-orange-600 hover:bg-orange-700"
+                disabled={loading}
+              >
+                {loading ? "Sending OTP..." : "Let's Begin →"}
+              </Button>
+            </form>
           )}
 
           {/* Existing User Form */}
           {isExistingUser && (
             <form onSubmit={onExistingUserSubmit} className="grid gap-5">
               <div className="text-center mb-4">
-                <h3 className="text-lg font-semibold text-orange-900 mb-2">Welcome Back!</h3>
-                <p className="text-sm text-gray-600">Enter your email to receive OTP</p>
+                <h3 className="text-lg font-semibold text-orange-900 mb-2">
+                  Welcome Back!
+                </h3>
+                <p className="text-sm text-gray-600">
+                  Enter your email to receive OTP
+                </p>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="existingEmail">Email ID</Label>
-                <Input 
-                  id="existingEmail" 
-                  type="email" 
-                  value={existingUserEmail} 
+                <Input
+                  id="existingEmail"
+                  type="email"
+                  value={existingUserEmail}
                   onChange={(e) => {
                     setExistingUserEmail(e.target.value);
                     if (existingUserError) setExistingUserError("");
-                  }} 
-                  required 
-                  placeholder="you@example.com" 
+                  }}
+                  required
+                  placeholder="you@example.com"
                 />
                 {existingUserError && (
                   <div className="text-red-600 text-sm mt-1">
@@ -363,8 +439,8 @@ export default function Index() {
                   </div>
                 )}
               </div>
-              <Button 
-                className="mt-2 h-12 text-base bg-orange-600 hover:bg-orange-700" 
+              <Button
+                className="mt-2 h-12 text-base bg-orange-600 hover:bg-orange-700"
                 disabled={existingUserLoading}
               >
                 {existingUserLoading ? "Sending OTP..." : "Send OTP →"}

@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -71,6 +71,27 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
     );
   }
   return btoa(binary);
+};
+
+const VIDEO_WIDTH = 720;
+const VIDEO_HEIGHT = 1280;
+
+interface VideoCanvasMetrics {
+  scale: number;
+  drawWidth: number;
+  drawHeight: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+const getVideoCanvasMetrics = (rect: DOMRect): VideoCanvasMetrics => {
+  const scale = Math.min(VIDEO_WIDTH / rect.width, VIDEO_HEIGHT / rect.height);
+  const drawWidth = rect.width * scale;
+  const drawHeight = rect.height * scale;
+  const offsetX = (VIDEO_WIDTH - drawWidth) / 2;
+  const offsetY = (VIDEO_HEIGHT - drawHeight) / 2;
+
+  return { scale, drawWidth, drawHeight, offsetX, offsetY };
 };
 
 // Circular Progress Bar Component
@@ -235,6 +256,16 @@ const PRESET_GREETINGS = [
   "May your Diwali sparkle with love, laughter, and lots of Fortune",
   "Sharing the flavours of #DiwaliKaFortune with you",
 ];
+
+const LOADER_STEP_HOLD_MS = 3500;
+const LOADER_STEP_FADE_MS = 700;
+const PROGRESS_INTERMEDIATE_DURATION_MS = 3000;
+const PROGRESS_FINAL_DURATION_MS = 2500;
+
+const delay = (ms: number) =>
+  new Promise<void>((resolve) => {
+    setTimeout(resolve, ms);
+  });
 
 const GENERATION_STEPS = [
   "North India glows with Malpua, mathris, Pakode and festive warmth!",
@@ -437,10 +468,50 @@ export default function Create() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const manualLoaderControlRef = useRef(false);
 
   const selectedBackground = useMemo(
     () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
     [bg],
+  );
+
+  const animateProgress = useCallback(
+    (start: number, end: number, duration: number) => {
+      if (duration <= 0) {
+        setGenerationProgress(end);
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        if (
+          typeof window === "undefined" ||
+          typeof window.requestAnimationFrame !== "function"
+        ) {
+          setGenerationProgress(end);
+          resolve();
+          return;
+        }
+
+        let startTimestamp: number | null = null;
+        const stepFrame = (timestamp: number) => {
+          if (startTimestamp === null) {
+            startTimestamp = timestamp;
+          }
+          const elapsed = timestamp - startTimestamp;
+          const progress = Math.min(elapsed / duration, 1);
+          const value = start + (end - start) * progress;
+          setGenerationProgress(value);
+          if (progress < 1) {
+            window.requestAnimationFrame(stepFrame);
+          } else {
+            resolve();
+          }
+        };
+
+        window.requestAnimationFrame(stepFrame);
+      });
+    },
+    [setGenerationProgress],
   );
 
   // Load canvas-record only on desktop devices
@@ -685,23 +756,31 @@ export default function Create() {
 
   // Cycle through generation steps while loading
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setGenerationStep(0);
-      setIsFading(false);
-      interval = setInterval(() => {
-        // Start fade out
-        setIsFading(true);
+    if (!loading || manualLoaderControlRef.current) {
+      return;
+    }
 
-        // After fade out completes, change step and fade in
-        setTimeout(() => {
+    let holdTimeout: ReturnType<typeof setTimeout>;
+    let fadeTimeout: ReturnType<typeof setTimeout>;
+
+    const cycle = () => {
+      holdTimeout = setTimeout(() => {
+        setIsFading(true);
+        fadeTimeout = setTimeout(() => {
           setGenerationStep((prev) => (prev + 1) % GENERATION_STEPS.length);
           setIsFading(false);
-        }, 800); // Fade out duration
-      }, 10000); // Change step every 4 seconds
-    }
+          cycle();
+        }, LOADER_STEP_FADE_MS);
+      }, LOADER_STEP_HOLD_MS);
+    };
+
+    setGenerationStep(0);
+    setIsFading(false);
+    cycle();
+
     return () => {
-      if (interval) clearInterval(interval);
+      clearTimeout(holdTimeout);
+      clearTimeout(fadeTimeout);
     };
   }, [loading]);
 
@@ -1057,13 +1136,11 @@ export default function Create() {
 
       // Get the container's dimensions
       const rect = cardContainer.getBoundingClientRect();
-      const whatsappSize = 512;
-      const maxSize = Math.min(rect.width, rect.height);
-      const scale = whatsappSize / maxSize;
+      const metrics = getVideoCanvasMetrics(rect);
+      const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
 
-      canvas.width = whatsappSize;
-      canvas.height = whatsappSize;
-      ctx.scale(scale, scale);
+      canvas.width = VIDEO_WIDTH;
+      canvas.height = VIDEO_HEIGHT;
 
       // Create MediaRecorder with WhatsApp-compatible settings
       const stream = canvas.captureStream(15); // 15 FPS for WhatsApp compatibility
@@ -1108,10 +1185,6 @@ export default function Create() {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // Calculate centered position
-          const offsetX = (targetWidth - rect.width * scale) / 2;
-          const offsetY = (targetHeight - rect.height * scale) / 2;
-
           // Draw the background video
           if (
             backgroundVideo.videoWidth > 0 &&
@@ -1121,8 +1194,8 @@ export default function Create() {
               backgroundVideo,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
           }
 
@@ -1130,25 +1203,13 @@ export default function Create() {
           const generatedImg = new Image();
           generatedImg.crossOrigin = "anonymous";
           generatedImg.src = result;
-          ctx.drawImage(
-            generatedImg,
-            offsetX,
-            offsetY,
-            rect.width * scale,
-            rect.height * scale,
-          );
+          ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
 
           // Draw the photo frame
           const photoFrameImg = new Image();
           photoFrameImg.crossOrigin = "anonymous";
           photoFrameImg.src = "/photo-frame-story.png";
-          ctx.drawImage(
-            photoFrameImg,
-            offsetX,
-            offsetY,
-            rect.width * scale,
-            rect.height * scale,
-          );
+          ctx.drawImage(photoFrameImg, offsetX, offsetY, drawWidth, drawHeight);
 
           // Draw the greeting text
           if (greeting) {
@@ -1156,7 +1217,7 @@ export default function Create() {
             ctx.font = "bold 20px Arial";
             ctx.textAlign = "center";
             ctx.textBaseline = "middle";
-            ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+            ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
           }
         };
 
@@ -1191,16 +1252,31 @@ export default function Create() {
           return;
         }
 
-        // Set WhatsApp-compatible dimensions
-        canvas.width = 512;
-        canvas.height = 512;
+        canvas.width = VIDEO_WIDTH;
+        canvas.height = VIDEO_HEIGHT;
 
-        // Create MediaRecorder with strict WhatsApp settings
-        const stream = canvas.captureStream(15); // 15 FPS for WhatsApp
+        let drawWidth = VIDEO_WIDTH;
+        let drawHeight = VIDEO_HEIGHT;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (video.videoWidth > 0 && video.videoHeight > 0) {
+          const scale = Math.min(
+            VIDEO_WIDTH / video.videoWidth,
+            VIDEO_HEIGHT / video.videoHeight,
+          );
+          drawWidth = video.videoWidth * scale;
+          drawHeight = video.videoHeight * scale;
+          offsetX = (VIDEO_WIDTH - drawWidth) / 2;
+          offsetY = (VIDEO_HEIGHT - drawHeight) / 2;
+        }
+
+        // Create MediaRecorder with strict sharing-friendly settings
+        const stream = canvas.captureStream(15);
         const mediaRecorder = new MediaRecorder(stream, {
-          mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
-          videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-          audioBitsPerSecond: 32000, // 32kbps audio
+          mimeType: 'video/mp4; codecs="avc1.42E01E"',
+          videoBitsPerSecond: 200000,
+          audioBitsPerSecond: 32000,
         });
 
         const chunks: Blob[] = [];
@@ -1215,19 +1291,19 @@ export default function Create() {
           const optimizedBlob = new Blob(chunks, { type: "video/mp4" });
           const optimizedUrl = URL.createObjectURL(optimizedBlob);
 
-          console.log("📱 WhatsApp-optimized video:", {
+          console.log("📱 Optimized video:", {
             originalSize: videoBlob.size,
             optimizedSize: optimizedBlob.size,
             sizeInMB: (optimizedBlob.size / (1024 * 1024)).toFixed(2),
             duration: video.duration,
-            width: video.videoWidth,
-            height: video.videoHeight,
+            width: VIDEO_WIDTH,
+            height: VIDEO_HEIGHT,
           });
 
-          // Validate WhatsApp compatibility
           if (optimizedBlob.size > 16 * 1024 * 1024) {
-            // 16MB limit
-            console.warn("⚠️ Video too large for WhatsApp, using original");
+            console.warn(
+              "⚠️ Video too large after optimization, using original",
+            );
             resolve(URL.createObjectURL(videoBlob));
           } else {
             resolve(optimizedUrl);
@@ -1245,14 +1321,13 @@ export default function Create() {
 
         const drawFrame = (currentTime: number) => {
           if (currentTime - lastFrameTime >= frameInterval) {
-            // Draw video frame to canvas
-            ctx.drawImage(video, 0, 0, 512, 512);
+            ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
+            ctx.drawImage(video, offsetX, offsetY, drawWidth, drawHeight);
 
             frameCount++;
             lastFrameTime = currentTime;
           }
 
-          // Check if video has ended
           if (video.ended || video.paused) {
             mediaRecorder.stop();
             return;
@@ -1314,19 +1389,15 @@ export default function Create() {
           return;
         }
 
-        // Get the container's dimensions and optimize for WhatsApp
+        // Get the container's dimensions and compute 9:16 metrics
         const rect = cardContainer.getBoundingClientRect();
+        const metrics = getVideoCanvasMetrics(rect);
+        const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
 
-        // WhatsApp prefers square videos
-        const whatsappSize = 512; // WhatsApp-friendly size
-        const maxSize = Math.min(rect.width, rect.height);
-        const scale = whatsappSize / maxSize;
+        canvas.width = VIDEO_WIDTH;
+        canvas.height = VIDEO_HEIGHT;
 
-        canvas.width = whatsappSize;
-        canvas.height = whatsappSize;
-        ctx.scale(scale, scale);
-
-        // Initialize Canvas Recorder with strict WhatsApp-compatible settings
+        // Initialize Canvas Recorder with strict sharing-compatible settings
         const recorder = new Recorder(ctx, {
           extension: "mp4",
           target: "in-browser",
@@ -1408,11 +1479,7 @@ export default function Create() {
           // Check if we should record this frame
           if (currentTime - lastFrameTime >= frameInterval) {
             // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-            // Calculate centered position for 9:16 canvas
-            const offsetX = (targetWidth - rect.width * scale) / 2;
-            const offsetY = (targetHeight - rect.height * scale) / 2;
+            ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
 
             // Draw the background video
             if (
@@ -1423,8 +1490,8 @@ export default function Create() {
                 backgroundVideo,
                 offsetX,
                 offsetY,
-                rect.width * scale,
-                rect.height * scale,
+                drawWidth,
+                drawHeight,
               );
             }
 
@@ -1433,8 +1500,8 @@ export default function Create() {
               generatedImg,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
 
             // Draw the photo frame
@@ -1442,8 +1509,8 @@ export default function Create() {
               photoFrameImg,
               offsetX,
               offsetY,
-              rect.width * scale,
-              rect.height * scale,
+              drawWidth,
+              drawHeight,
             );
 
             // Draw the greeting text
@@ -1452,7 +1519,7 @@ export default function Create() {
               ctx.font = "bold 20px Arial";
               ctx.textAlign = "center";
               ctx.textBaseline = "middle";
-              ctx.fillText(greeting, whatsappSize / 2, whatsappSize - 80);
+              ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
             }
 
             // Record this frame
@@ -1718,8 +1785,7 @@ export default function Create() {
     ctx: CanvasRenderingContext2D,
     backgroundVideo: HTMLVideoElement,
     rect: DOMRect,
-    scale: number,
-    whatsappSize: number,
+    metrics: VideoCanvasMetrics,
   ) => {
     try {
       console.log("📱 Initializing mobile video recorder...");
@@ -1793,14 +1859,7 @@ export default function Create() {
       console.log("📱 Mobile video recording started");
 
       // Start the animation loop
-      startMobileAnimationLoop(
-        canvas,
-        ctx,
-        backgroundVideo,
-        rect,
-        scale,
-        whatsappSize,
-      );
+      startMobileAnimationLoop(canvas, ctx, backgroundVideo, rect, metrics);
     } catch (error) {
       console.error("❌ Mobile video recorder initialization failed:", error);
       setVideoGenerationError(
@@ -1815,8 +1874,7 @@ export default function Create() {
     ctx: CanvasRenderingContext2D,
     backgroundVideo: HTMLVideoElement,
     rect: DOMRect,
-    scale: number,
-    whatsappSize: number,
+    metrics: VideoCanvasMetrics,
   ) => {
     let animationId: number | null = null;
     let startTime = Date.now();
@@ -1825,6 +1883,8 @@ export default function Create() {
     let isAnimating = true;
     const targetFPS = 15; // 15 FPS for WhatsApp compatibility
     const frameInterval = 1000 / targetFPS; // ~66.67ms per frame
+
+    const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
 
     // Pre-load images
     const generatedImg = new Image();
@@ -2771,7 +2831,7 @@ export default function Create() {
             throw netErr;
           }
 
-          console.log("📡 Upload response status:", uploadResponse.status);
+          console.log("�� Upload response status:", uploadResponse.status);
 
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text().catch(() => "");
@@ -3080,6 +3140,7 @@ export default function Create() {
 
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
+    manualLoaderControlRef.current = true;
     setLoading(true);
     setResult(null);
     setGenerationStep(0);
@@ -3112,36 +3173,16 @@ export default function Create() {
         setGenerationStep(i);
         setIsFading(false);
 
-        // Calculate progress percentage with smoother increments
-        const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70; // 70% for steps, 30% for API call
+        const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70;
         setGenerationProgress(stepProgress);
 
-        // Add delay between steps for better UX (slower)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Fade out current step
+        await delay(LOADER_STEP_HOLD_MS);
         setIsFading(true);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await delay(LOADER_STEP_FADE_MS);
       }
 
-      // Animate progress from 70% to 90% over 1.5 seconds
-      const animateTo90 = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 70;
-          const increment = 20 / 30; // 20% over 30 steps (1.5 seconds at 50ms intervals)
-          const interval = setInterval(() => {
-            progress += increment;
-            if (progress >= 90) {
-              progress = 90;
-              clearInterval(interval);
-              resolve();
-            }
-            setGenerationProgress(progress);
-          }, 50); // 50ms intervals for smooth animation
-        });
-      };
-
-      await animateTo90();
+      setIsFading(false);
+      await animateProgress(70, 90, PROGRESS_INTERMEDIATE_DURATION_MS);
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -3158,27 +3199,9 @@ export default function Create() {
       }
       const json = await res.json();
 
-      // Animate progress from 90% to 100% over 1.5 seconds
-      const animateTo100 = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 90;
-          const increment = 10 / 30; // 10% over 30 steps (1.5 seconds at 50ms intervals)
-          const interval = setInterval(() => {
-            progress += increment;
-            if (progress >= 100) {
-              progress = 100;
-              clearInterval(interval);
-              resolve();
-            }
-            setGenerationProgress(progress);
-          }, 50); // 50ms intervals for smooth animation
-        });
-      };
+      await animateProgress(90, 100, PROGRESS_FINAL_DURATION_MS);
 
-      await animateTo100();
-
-      // Small delay to ensure progress bar animation completes
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await delay(LOADER_STEP_FADE_MS);
 
       setResult(json?.image_url ?? json?.result_url ?? null);
       setResultData(json);
@@ -3209,6 +3232,7 @@ export default function Create() {
           "Failed to generate. Configure FAL_KEY in env and try again.",
       );
     } finally {
+      manualLoaderControlRef.current = false;
       setLoading(false);
     }
   };
@@ -3728,7 +3752,7 @@ export default function Create() {
                           style={{ zIndex: 1002 }}
                         >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
-                            <p className="text-xl md:text-2xl font-semibold leading-tight">
+                            <p className="text-sm md:text-2xl font-semibold leading-tight">
                               {greeting}
                             </p>
                           </div>
@@ -3738,110 +3762,6 @@ export default function Create() {
                   </div>
                 </div>
               </div>
-              {/* Manual Recording Controls */}
-              {!recordedVideoUrl && (
-                <div className="text-center mb-4">
-                  <div className="inline-flex items-center gap-4 px-6 py-3 bg-gradient-to-r from-orange-50 to-amber-50 rounded-lg border border-orange-200">
-                    {!isRecording ? (
-                      <Button
-                        onClick={startRecording}
-                        className="h-12 px-6 bg-red-600 hover:bg-red-700 text-white"
-                        disabled={!result}
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-white rounded-full"></div>
-                          <span>Start Recording</span>
-                        </div>
-                      </Button>
-                    ) : (
-                      <Button
-                        onClick={stopRecording}
-                        className="h-12 px-6 bg-gray-600 hover:bg-gray-700 text-white"
-                      >
-                        <div className="flex items-center gap-2">
-                          <div className="w-3 h-3 bg-white rounded-sm"></div>
-                          <span>Stop Recording</span>
-                        </div>
-                      </Button>
-                    )}
-
-                    {isRecording && (
-                      <div className="text-sm text-orange-700">
-                        <div className="flex items-center gap-2">
-                          <div className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></div>
-                          <span>
-                            Recording: {recordingProgress.toFixed(1)}s
-                          </span>
-                          {recordingProgress < 2 && (
-                            <span className="text-xs text-orange-600">
-                              (Min: 2s)
-                            </span>
-                          )}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="text-xs text-gray-500 mt-2">
-                    <p>
-                      Click "Start Recording" to begin, then "Stop Recording"
-                      when finished
-                    </p>
-                    <p>
-                      Like the{" "}
-                      <a
-                        href="https://dmnsgn.github.io/canvas-record/"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-orange-600 hover:underline"
-                      >
-                        canvas-record demo
-                      </a>
-                    </p>
-                    <div className="mt-2 p-2 bg-blue-50 border border-blue-200 rounded text-blue-700">
-                      <p className="font-medium">⏱️ Recording Tips</p>
-                      <p className="text-xs">
-                        • Record for at least 2 seconds for best results
-                      </p>
-                      <p className="text-xs">
-                        • Longer recordings create smoother videos
-                      </p>
-                    </div>
-                    <div className="mt-2 p-2 bg-green-50 border border-green-200 rounded text-green-700">
-                      <p className="font-medium">�� Maximum Compatibility</p>
-                      <p className="text-xs">
-                        Videos are optimized for maximum compatibility (512x512,
-                        15fps, H.264 Baseline)
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Video Generation Error */}
-                  {videoGenerationError && (
-                    <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700">
-                      <div className="flex items-center gap-2">
-                        <div className="w-4 h-4 bg-red-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-xs">!</span>
-                        </div>
-                        <span className="font-medium">
-                          Video Generation Issue
-                        </span>
-                      </div>
-                      <p className="text-sm mt-1">{videoGenerationError}</p>
-                      <button
-                        onClick={() => {
-                          setVideoGenerationError(null);
-                          setRecordedVideoUrl(null);
-                          setCanvasRecorder(null);
-                        }}
-                        className="mt-2 text-xs bg-red-600 text-white px-3 py-1 rounded hover:bg-red-700 transition-colors"
-                      >
-                        Try Again
-                      </button>
-                    </div>
-                  )}
-                </div>
-              )}
 
               {/* Upload Progress Indicator */}
               {downloading && (
@@ -3877,17 +3797,10 @@ export default function Create() {
                     : downloading
                       ? "Uploading to Cloudinary..."
                       : recordedVideoUrl
-                        ? "Open Video"
+                        ? "Download Video"
                         : "Start Recording"}
                 </Button>
-                <Button
-                  type="button"
-                  className="h-11 px-6 bg-gray-600 text-white hover:bg-gray-700"
-                  onClick={() => setShareOpen(true)}
-                  disabled={videoUploading}
-                >
-                  {videoUploading ? "Uploading..." : "Quick Share"}
-                </Button>
+
                 <Button
                   type="button"
                   className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
