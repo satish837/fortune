@@ -1135,13 +1135,11 @@ export default function Create() {
 
       // Get the container's dimensions
       const rect = cardContainer.getBoundingClientRect();
-      const whatsappSize = 512;
-      const maxSize = Math.min(rect.width, rect.height);
-      const scale = whatsappSize / maxSize;
+      const metrics = getVideoCanvasMetrics(rect);
+      const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
 
-      canvas.width = whatsappSize;
-      canvas.height = whatsappSize;
-      ctx.scale(scale, scale);
+      canvas.width = VIDEO_WIDTH;
+      canvas.height = VIDEO_HEIGHT;
 
       // Create MediaRecorder with WhatsApp-compatible settings
       const stream = canvas.captureStream(15); // 15 FPS for WhatsApp compatibility
@@ -2169,7 +2167,7 @@ export default function Create() {
       );
     } catch (error) {
       console.error(
-        "❌ Canvas recorder failed, falling back to MediaRecorder:",
+        "�� Canvas recorder failed, falling back to MediaRecorder:",
         error,
       );
       await initializeMobileVideoRecorder(
