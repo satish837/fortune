@@ -2877,13 +2877,22 @@ export default function Create() {
     }
   };
 
-  const shareToWhatsApp = () => {
-    // Determine best URL to share (cloud first, then recorded)
-    const urlToShare =
-      (cloudinaryVideoUrl &&
-        (buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl)) ||
-      recordedVideoUrl ||
-      null;
+  const shareToWhatsApp = async () => {
+    // Always prefer a public Cloudinary URL; upload if we only have a local blob
+    let urlToShare: string | null = null;
+
+    if (cloudinaryVideoUrl) {
+      urlToShare = buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
+    } else if (recordedVideoUrl) {
+      try {
+        setUploadError(null);
+        const uploadedUrl = await uploadVideoToCloudinary(recordedVideoUrl);
+        urlToShare = buildSocialUrl(uploadedUrl) || uploadedUrl;
+      } catch (e) {
+        alert("Unable to prepare a shareable link. Please try again.");
+        return;
+      }
+    }
 
     if (!urlToShare) {
       alert("Please generate a video first before sharing to WhatsApp.");
