@@ -2928,7 +2928,7 @@ export default function Create() {
             recordedChunksRef.current.length > 0
           ) {
             finalBlob = new Blob(recordedChunksRef.current, {
-              type: "video/mp4",
+              type: recordedMimeTypeRef.current || "video/mp4",
             });
           }
 
