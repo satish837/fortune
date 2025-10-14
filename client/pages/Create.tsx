@@ -693,7 +693,7 @@ export default function Create() {
 
         const config = await response.json();
         setCloudinaryConfig(config);
-        console.log("✅ Cloudinary config loaded:", config);
+        console.log("�� Cloudinary config loaded:", config);
       } catch (error: any) {
         console.error("❌ Error loading Cloudinary config:", error);
         try {
@@ -2095,7 +2095,7 @@ export default function Create() {
 
     // For mobile devices, use MediaRecorder fallback
     if (isMobile) {
-      console.log("📱 Mobile detected, using MediaRecorder fallback");
+      console.log("�� Mobile detected, using MediaRecorder fallback");
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
@@ -2893,169 +2893,39 @@ export default function Create() {
   };
 
   const downloadVideo = async () => {
-    if (recordedVideoUrl) {
-      try {
-        setDownloading(true);
-        let videoUrl = recordedVideoUrl;
+    if (!recordedVideoUrl && !cloudinaryVideoUrl) {
+      return;
+    }
 
-        // Always try to upload to Cloudinary first for better quality
-        console.log("🔄 Uploading video to Cloudinary...");
+    try {
+      setDownloading(true);
+      let targetUrl = cloudinaryVideoUrl;
 
+      if (!targetUrl && recordedVideoUrl) {
         try {
-          // Upload the video using our API endpoint
-          console.log("🔄 Uploading video via API...");
-
-          // Try to fetch the video blob from the recorded URL. If that fails (some environments block fetch on blob: URLs),
-          // fall back to using the in-memory recorded chunks.
-          let blob: Blob | null = null;
-          try {
-            const response = await fetch(recordedVideoUrl);
-            if (!response.ok) {
-              throw new Error(
-                `Failed to fetch recorded video: ${response.status}`,
-              );
-            }
-            blob = await response.blob();
-          } catch (fetchErr) {
-            console.warn(
-              "⚠️ Could not fetch recordedVideoUrl, falling back to recordedChunksRef:",
-              fetchErr,
-            );
-            if (
-              recordedChunksRef.current &&
-              recordedChunksRef.current.length > 0
-            ) {
-              blob = new Blob(recordedChunksRef.current, {
-                type: recordedMimeTypeRef.current || "video/mp4",
-              });
-            }
-          }
-
-          if (!blob) {
-            throw new Error("Unable to obtain video blob for upload");
-          }
-
-          updateRecordedMimeType(blob.type || recordedMimeTypeRef.current);
-
-          // Send raw binary to server for upload
-          const arrayBuffer = await blob.arrayBuffer();
-          const uploadFilenameExtension = getFileExtensionFromMime(
-            blob.type || recordedMimeTypeRef.current,
+          targetUrl = await uploadVideoToCloudinary(recordedVideoUrl);
+        } catch (uploadErr) {
+          console.error("❌ Unable to upload video before opening link:", uploadErr);
+          setUploadError(
+            uploadErr instanceof Error ? uploadErr.message : "Upload failed",
           );
-          console.log("🔧 Upload Details:", {
-            videoSize: blob.size,
-            videoType: blob.type,
-            cloudinaryConfig: cloudinaryConfig,
-          });
-
-          let uploadResponse: Response;
-          try {
-            uploadResponse = await fetch("/api/upload-video", {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/octet-stream",
-                "x-filename": `festive-postcard-${Date.now()}.${uploadFilenameExtension}`,
-              },
-              body: arrayBuffer,
-            });
-          } catch (netErr) {
-            console.error("❌ Network error uploading to server:", netErr);
-            throw netErr;
-          }
-
-          console.log("�� Upload response status:", uploadResponse.status);
-
-          if (!uploadResponse.ok) {
-            const errorText = await uploadResponse.text().catch(() => "");
-            throw new Error(
-              `Upload failed: ${uploadResponse.status} - ${errorText}`,
-            );
-          }
-
-          const uploadData = await uploadResponse.json().catch((e) => {
-            console.warn("⚠️ Failed to parse upload response JSON:", e);
-            return null;
-          });
-          console.log("✅ Video uploaded successfully:", uploadData);
-
-          videoUrl =
-            (uploadData &&
-              (uploadData.url ||
-                uploadData.secure_url ||
-                uploadData.secureUrl ||
-                uploadData.originalUrl)) ||
-            videoUrl;
-
-          // Update the state for future use
-          setCloudinaryVideoUrl(videoUrl);
-          updateRecordedMimeType("video/mp4");
-
-          console.log(
-            "✅ Video processed through Cloudinary MP4 converter:",
-            videoUrl,
-          );
-        } catch (cloudinaryError) {
-          console.error("❌ Cloudinary processing failed:", cloudinaryError);
-          console.log("⚠️ Falling back to original video URL");
-          // Fallback to original video
-          videoUrl = recordedVideoUrl;
+          targetUrl = recordedVideoUrl;
         }
-
-        // Prefer a direct download without navigating away
-        try {
-          // If videoUrl is a blob URL we might not be able to fetch it in some environments; handle accordingly
-          let finalBlob: Blob | null = null;
-          try {
-            const fetched = await fetch(videoUrl);
-            if (fetched.ok) finalBlob = await fetched.blob();
-          } catch (e) {
-            console.warn(
-              "⚠️ fetch(videoUrl) failed, will try recordedChunksRef if available:",
-              e,
-            );
-          }
-
-          if (
-            !finalBlob &&
-            recordedChunksRef.current &&
-            recordedChunksRef.current.length > 0
-          ) {
-            finalBlob = new Blob(recordedChunksRef.current, {
-              type: recordedMimeTypeRef.current || "video/mp4",
-            });
-          }
-
-          if (!finalBlob) {
-            // Last resort: open the URL in a new tab
-            throw new Error("Could not obtain downloadable blob");
-          }
-
-          const finalMime =
-            finalBlob.type || recordedMimeTypeRef.current || "video/mp4";
-          updateRecordedMimeType(finalMime);
-          const finalExtension = getFileExtensionFromMime(finalMime);
-          const objectUrl = URL.createObjectURL(finalBlob);
-          const a = document.createElement("a");
-          a.href = objectUrl;
-          a.download = `diwali-postcard-${Date.now()}.${finalExtension}`;
-          a.rel = "noopener";
-          a.type = finalMime;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-          setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-          console.log("✅ Video download triggered");
-        } catch (dlErr) {
-          console.warn("⚠️ Direct download failed, opening in new tab:", dlErr);
-          window.open(videoUrl, "_blank", "noopener,noreferrer");
-        }
-      } catch (error) {
-        console.error("❌ Failed to download/open video:", error);
-        // Fallback: open original video in new tab
-        window.open(recordedVideoUrl, "_blank", "noopener,noreferrer");
-      } finally {
-        setDownloading(false);
       }
+
+      if (!targetUrl) {
+        throw new Error("Video link unavailable");
+      }
+
+      window.open(targetUrl, "_blank", "noopener,noreferrer");
+      console.log("✅ Cloudinary video link opened", targetUrl);
+    } catch (error) {
+      console.error("❌ Failed to open video link:", error);
+      if (recordedVideoUrl) {
+        window.open(recordedVideoUrl, "_blank", "noopener,noreferrer");
+      }
+    } finally {
+      setDownloading(false);
     }
   };
 
