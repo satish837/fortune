@@ -4323,44 +4323,27 @@ export default function Create() {
               )}
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
-                <Button
-                  type="button"
-                  className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
-                  onClick={recordedVideoUrl ? downloadVideo : startRecording}
-                  disabled={isRecording || downloading}
-                >
-                  {isRecording
-                    ? "Recording..."
-                    : downloading
-                      ? "Uploading to Cloudinary..."
-                      : recordedVideoUrl
-                        ? "Download Video"
-                        : "Start Recording"}
-                </Button>
-
-                {isMobile && (
-                  <div className="flex flex-col gap-2">
-                    <Button
-                      type="button"
-                      className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700"
-                      onClick={downloadPostcardImage}
-                      disabled={imageDownloading}
-                    >
-                      {imageDownloading
-                        ? "Preparing image..."
-                        : "Download Postcard Image"}
-                    </Button>
-                    {imageDownloadError && (
-                      <span className="text-xs text-red-600 text-center sm:text-left">
-                        {imageDownloadError}
-                      </span>
-                    )}
-                  </div>
-                )}
+                <div className="flex flex-col gap-2 w-full sm:w-auto">
+                  <Button
+                    type="button"
+                    className="h-11 px-6 bg-orange-600 text-white hover:bg-orange-700 w-full sm:w-auto"
+                    onClick={downloadPostcardImage}
+                    disabled={imageDownloading}
+                  >
+                    {imageDownloading
+                      ? "Preparing image..."
+                      : "Download Postcard Image"}
+                  </Button>
+                  {imageDownloadError && (
+                    <span className="text-xs text-red-600 text-center sm:text-left">
+                      {imageDownloadError}
+                    </span>
+                  )}
+                </div>
 
                 <Button
                   type="button"
-                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50"
+                  className="h-11 px-6 border border-gray-300 text-gray-700 hover:bg-gray-50 w-full sm:w-auto"
                   onClick={() => {
                     setResult(null);
                     setResultData(null);
@@ -4388,30 +4371,10 @@ export default function Create() {
                       You can still download a festive image with the
                       background, frame, and your greeting.
                     </p>
-                    {isMobile ? (
-                      <p className="text-xs text-orange-700">
-                        Use the Download Postcard Image button above to save
-                        your postcard.
-                      </p>
-                    ) : (
-                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-                        <Button
-                          type="button"
-                          className="h-10 px-4 bg-orange-600 text-white hover:bg-orange-700"
-                          onClick={downloadPostcardImage}
-                          disabled={imageDownloading}
-                        >
-                          {imageDownloading
-                            ? "Preparing image..."
-                            : "Download Postcard Image"}
-                        </Button>
-                        {imageDownloadError && (
-                          <span className="text-xs text-red-600 sm:ml-2">
-                            {imageDownloadError}
-                          </span>
-                        )}
-                      </div>
-                    )}
+                    <p className="text-xs text-orange-700">
+                      Use the Download Postcard Image button above to save your
+                      postcard.
+                    </p>
                   </div>
                 </div>
               )}
