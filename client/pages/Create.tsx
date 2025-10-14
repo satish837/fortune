@@ -1819,7 +1819,7 @@ export default function Create() {
     metrics: VideoCanvasMetrics,
   ) => {
     try {
-      console.log("�� Initializing mobile video recorder...");
+      console.log("📱 Initializing mobile video recorder...");
 
       // Create a stream from the canvas
       const stream = canvas.captureStream(15); // 15 FPS
@@ -2460,6 +2460,7 @@ export default function Create() {
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
         updateRecordedMimeType(blob.type || mimeType);
         const url = URL.createObjectURL(blob);
+        setRecordedVideoBlob(blob);
         setRecordedVideoUrl(url);
         setIsRecording(false);
 
