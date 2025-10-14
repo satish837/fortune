@@ -3815,7 +3815,7 @@ export default function Create() {
                       {/* Greeting Message Overlay */}
                       {greeting && (
                         <div
-                          className="w-full absolute bottom-2 md:bottom-6 left-0 right-0 flex justify-center"
+                          className="w-full absolute bottom-0 md:bottom-6 left-0 right-0 flex justify-center"
                           style={{ zIndex: 1002 }}
                         >
                           <div className="text-white py-2 rounded-lg text-center max-w-[95%] md:max-w-[90%]">
