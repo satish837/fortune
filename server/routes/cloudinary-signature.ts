@@ -54,7 +54,6 @@ export const handleCloudinarySignature: RequestHandler = (req, res) => {
     }
 
     const signatureBase = Object.keys(params)
-      .filter((key) => key !== "resource_type")
       .sort()
       .map((key) => `${key}=${params[key]}`)
       .join("&");
