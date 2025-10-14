@@ -2772,11 +2772,14 @@ export default function Create() {
       try {
         const arrayBuffer = await videoBlob.arrayBuffer();
         console.log("📤 Uploading raw binary to server-side signed upload...");
+        const filenameExtension = getFileExtensionFromMime(
+          videoBlob.type || recordedMimeTypeRef.current,
+        );
         const uploadResponse = await fetch("/api/upload-video", {
           method: "POST",
           headers: {
             "Content-Type": "application/octet-stream",
-            "x-filename": `festive-postcard-${Date.now()}.mp4`,
+            "x-filename": `festive-postcard-${Date.now()}.${filenameExtension}`,
           },
           body: arrayBuffer,
         });
