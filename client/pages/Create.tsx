@@ -1889,8 +1889,7 @@ export default function Create() {
     ctx: CanvasRenderingContext2D,
     backgroundVideo: HTMLVideoElement,
     rect: DOMRect,
-    scale: number,
-    whatsappSize: number,
+    metrics: VideoCanvasMetrics,
   ) => {
     let animationId: number | null = null;
     let startTime = Date.now();
