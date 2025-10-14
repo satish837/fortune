@@ -4150,7 +4150,7 @@ export default function Create() {
               {videoGenerationError && (
                 <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
                   <div className="font-semibold text-red-800">
-                    We couldn 27t generate the video.
+                    We couldn't generate the video.
                   </div>
                   <p className="mt-1">{videoGenerationError}</p>
                   {isMobile && (
