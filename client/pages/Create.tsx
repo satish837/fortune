@@ -462,6 +462,10 @@ export default function Create() {
   } | null>(null);
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [imageDownloading, setImageDownloading] = useState(false);
+  const [imageDownloadError, setImageDownloadError] = useState<string | null>(
+    null,
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
@@ -514,6 +518,61 @@ export default function Create() {
     if (lowerMime.includes("avi")) return "avi";
     return "mp4";
   };
+
+  const loadHtmlImage = useCallback((src: string) => {
+    return new Promise<HTMLImageElement>((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = "anonymous";
+      img.onload = () => resolve(img);
+      img.onerror = () => reject(new Error(`Failed to load image: ${src}`));
+      img.src = src;
+    });
+  }, []);
+
+  const waitForVideoFrame = useCallback((video: HTMLVideoElement) => {
+    return new Promise<void>((resolve, reject) => {
+      if (!video) {
+        reject(new Error("Video element not found"));
+        return;
+      }
+
+      function cleanup() {
+        video.removeEventListener("loadeddata", handleLoadedData);
+        video.removeEventListener("error", handleError);
+      }
+
+      function handleLoadedData() {
+        cleanup();
+        resolve();
+      }
+
+      function handleError() {
+        cleanup();
+        reject(new Error("Failed to load video frame"));
+      }
+
+      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+        resolve();
+        return;
+      }
+
+      video.addEventListener("loadeddata", handleLoadedData, { once: true });
+      video.addEventListener("error", handleError, { once: true });
+
+      try {
+        if (video.paused) {
+          void video.play().catch(() => {
+            // Playback may be blocked; rely on loadeddata event instead
+          });
+        }
+        if (video.readyState === HTMLMediaElement.HAVE_NOTHING) {
+          video.load();
+        }
+      } catch (error) {
+        console.warn("Video preparation failed:", error);
+      }
+    });
+  }, []);
 
   const getGreetingFont = useCallback(
     (baseSize = 20) => {
@@ -1638,6 +1697,8 @@ export default function Create() {
     }
 
     try {
+      setVideoGenerationError(null);
+      setImageDownloadError(null);
       setIsRecording(true);
       setRecordingProgress(0);
       console.log("🎬 Starting manual video recording...");
@@ -2391,6 +2452,8 @@ export default function Create() {
     if (!result || !resultData) return;
 
     try {
+      setVideoGenerationError(null);
+      setImageDownloadError(null);
       setIsRecording(true);
       recordedChunksRef.current = [];
 
@@ -2717,6 +2780,213 @@ export default function Create() {
       setIsRecording(false);
     }
   };
+
+  const downloadPostcardImage = useCallback(async () => {
+    if (!result) {
+      setImageDownloadError("No generated postcard image available.");
+      return;
+    }
+
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    try {
+      setImageDownloadError(null);
+      setImageDownloading(true);
+
+      const cardContainer = document.querySelector(
+        ".generated-card-container",
+      ) as HTMLElement | null;
+
+      if (!cardContainer) {
+        throw new Error("Generated postcard is not available on the page.");
+      }
+
+      const rect = cardContainer.getBoundingClientRect();
+      const canvas = document.createElement("canvas");
+      canvas.width = VIDEO_WIDTH;
+      canvas.height = VIDEO_HEIGHT;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Unable to create drawing context.");
+      }
+
+      const { offsetX, offsetY, drawWidth, drawHeight } =
+        getVideoCanvasMetrics(rect);
+
+      ctx.fillStyle = "#1f2937";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const backgroundVideo = cardContainer.querySelector(
+        'video[src*="background"]',
+      ) as HTMLVideoElement | null;
+
+      let backgroundDrawn = false;
+
+      if (backgroundVideo) {
+        try {
+          await waitForVideoFrame(backgroundVideo);
+          if (
+            backgroundVideo.videoWidth > 0 &&
+            backgroundVideo.videoHeight > 0
+          ) {
+            ctx.drawImage(
+              backgroundVideo,
+              offsetX,
+              offsetY,
+              drawWidth,
+              drawHeight,
+            );
+            backgroundDrawn = true;
+          }
+        } catch (error) {
+          console.warn("⚠️ Unable to capture background frame:", error);
+        }
+      }
+
+      if (!backgroundDrawn) {
+        const gradient = ctx.createLinearGradient(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        gradient.addColorStop(0, "#fb923c");
+        gradient.addColorStop(1, "#f97316");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+
+        if (selectedBackground?.fallback) {
+          ctx.save();
+          const emojiFontSize = Math.max(48, Math.round(drawWidth * 0.35));
+          ctx.font = `${emojiFontSize}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+          ctx.fillText(
+            selectedBackground.fallback,
+            offsetX + drawWidth / 2,
+            offsetY + drawHeight / 2,
+          );
+          ctx.restore();
+        }
+      }
+
+      const [generatedImg, frameImg] = await Promise.all([
+        loadHtmlImage(result),
+        loadHtmlImage("/photo-frame-story.png"),
+      ]);
+
+      ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
+      ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
+
+      if (greeting) {
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = getGreetingFont();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        const maxWidth = drawWidth - 80;
+        const lineHeight = 28;
+        const wrapText = (context: CanvasRenderingContext2D) => {
+          const words = greeting.split(" ");
+          const lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const candidate = currentLine ? `${currentLine} ${word}` : word;
+            const exceeds = context.measureText(candidate).width > maxWidth;
+            if (exceeds && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else if (exceeds) {
+              lines.push(candidate);
+              currentLine = "";
+            } else {
+              currentLine = candidate;
+            }
+          }
+
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+
+          return lines;
+        };
+
+        const lines = wrapText(ctx);
+        const baseY =
+          offsetY + drawHeight - 80 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(line, VIDEO_WIDTH / 2, baseY + index * lineHeight);
+        });
+
+        ctx.restore();
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to create image blob."));
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `diwali-postcard-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          setTimeout(() => URL.revokeObjectURL(url), 500);
+          resolve();
+        }, "image/png");
+      });
+
+      try {
+        toast({
+          title: "Postcard image downloaded",
+          description: "Your festive postcard image is saved to your device.",
+        });
+      } catch (toastError) {
+        console.warn("Toast invocation failed:", toastError);
+      }
+    } catch (error) {
+      console.error("Failed to download postcard image:", error);
+      setImageDownloadError(
+        error instanceof Error
+          ? error.message
+          : "Failed to download postcard image.",
+      );
+      try {
+        toast({
+          title: "Download failed",
+          description:
+            "Unable to prepare the postcard image. Please try again.",
+        });
+      } catch (toastError) {
+        console.warn("Toast invocation failed:", toastError);
+      }
+    } finally {
+      setImageDownloading(false);
+    }
+  }, [
+    getGreetingFont,
+    greeting,
+    loadHtmlImage,
+    result,
+    selectedBackground,
+    waitForVideoFrame,
+  ]);
 
   const uploadVideoToCloudinary = async (videoUrl: string | Blob) => {
     try {
@@ -3876,11 +4146,53 @@ export default function Create() {
                     setRecordedVideoUrl(null);
                     setRecordedVideoBlob(null);
                     setCloudinaryVideoUrl(null);
+                    setVideoGenerationError(null);
+                    setImageDownloadError(null);
+                    setImageDownloading(false);
                   }}
                 >
                   Generate again
                 </Button>
               </div>
+
+              {videoGenerationError && (
+                <div className="mt-4 rounded-lg border border-red-200 bg-red-50 p-4 text-sm text-red-700">
+                  <div className="font-semibold text-red-800">
+                    We couldn't generate the video.
+                  </div>
+                  <p className="mt-1">{videoGenerationError}</p>
+                  {isMobile && (
+                    <div className="mt-3">
+                      <p className="mb-3 text-xs text-red-600 sm:text-sm">
+                        You can still download a festive image with the
+                        background, frame, and your greeting.
+                      </p>
+                      <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+                        <Button
+                          type="button"
+                          className="h-10 px-4 bg-orange-600 text-white hover:bg-orange-700"
+                          onClick={downloadPostcardImage}
+                          disabled={imageDownloading}
+                        >
+                          {imageDownloading
+                            ? "Preparing image..."
+                            : "Download Postcard Image"}
+                        </Button>
+                        {imageDownloadError && (
+                          <span className="text-xs text-red-600 sm:ml-2">
+                            {imageDownloadError}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {!isMobile && imageDownloadError && (
+                    <div className="mt-2 text-xs text-red-600">
+                      {imageDownloadError}
+                    </div>
+                  )}
+                </div>
+              )}
 
               {cloudinaryVideoUrl && (
                 <div className="mt-4 max-w-3xl mx-auto">
