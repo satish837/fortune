@@ -2952,11 +2952,16 @@ export default function Create() {
             throw new Error("Could not obtain downloadable blob");
           }
 
+          const finalMime =
+            finalBlob.type || recordedMimeTypeRef.current || "video/mp4";
+          updateRecordedMimeType(finalMime);
+          const finalExtension = getFileExtensionFromMime(finalMime);
           const objectUrl = URL.createObjectURL(finalBlob);
           const a = document.createElement("a");
           a.href = objectUrl;
-          a.download = `diwali-postcard-${Date.now()}.mp4`;
+          a.download = `diwali-postcard-${Date.now()}.${finalExtension}`;
           a.rel = "noopener";
+          a.type = finalMime;
           document.body.appendChild(a);
           a.click();
           document.body.removeChild(a);
