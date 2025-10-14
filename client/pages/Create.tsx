@@ -994,7 +994,7 @@ export default function Create() {
       setIsOptimizing(true);
       console.log("🔄 Optimizing image with TinyPNG...");
       console.log(
-        "�� Original file size:",
+        "📊 Original file size:",
         (file.size / (1024 * 1024)).toFixed(2),
         "MB",
       );
@@ -1697,6 +1697,8 @@ export default function Create() {
     }
 
     try {
+      setVideoGenerationError(null);
+      setImageDownloadError(null);
       setIsRecording(true);
       setRecordingProgress(0);
       console.log("🎬 Starting manual video recording...");
@@ -2450,6 +2452,8 @@ export default function Create() {
     if (!result || !resultData) return;
 
     try {
+      setVideoGenerationError(null);
+      setImageDownloadError(null);
       setIsRecording(true);
       recordedChunksRef.current = [];
 
@@ -3398,7 +3402,7 @@ export default function Create() {
       });
     }
 
-    const message = "Check out my festive Diwali postcard video! 🎆✨";
+    const message = "Check out my festive Diwali postcard video! ��✨";
     const facebookUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(urlToShare)}&quote=${encodeURIComponent(message)}`;
     window.open(facebookUrl, "_blank", "noopener,noreferrer");
   };
