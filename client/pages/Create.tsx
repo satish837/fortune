@@ -884,7 +884,7 @@ export default function Create() {
         }
       }
 
-      console.log("🧹 Component cleanup completed");
+      console.log("���� Component cleanup completed");
     };
   }, [canvasRecorder, recordedVideoUrl]);
 
@@ -1007,7 +1007,7 @@ export default function Create() {
       setIsOptimizing(false);
       return optimizedFile;
     } catch (error) {
-      console.error("❌ TinyPNG optimization failed:", error);
+      console.error("�� TinyPNG optimization failed:", error);
       console.log("⚠️ Using original file without optimization");
       setIsOptimizing(false);
       setOptimizationResult(null);
@@ -2462,6 +2462,7 @@ export default function Create() {
 
       mediaRecorder.onstop = async () => {
         const blob = new Blob(recordedChunksRef.current, { type: mimeType });
+        updateRecordedMimeType(blob.type || mimeType);
         const url = URL.createObjectURL(blob);
         setRecordedVideoUrl(url);
         setIsRecording(false);
@@ -2755,7 +2756,7 @@ export default function Create() {
         const json = await unsignedRes.json();
         const url = json.secure_url || json.url;
         if (!url) throw new Error("Unsigned upload returned no URL");
-        console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
+        console.log("�� Video uploaded to Cloudinary (unsigned):", url);
         setCloudinaryVideoUrl(url);
         return url;
       };
