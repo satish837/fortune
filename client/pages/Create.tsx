@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -236,6 +236,15 @@ const PRESET_GREETINGS = [
   "Sharing the flavours of #DiwaliKaFortune with you",
 ];
 
+const LOADER_STEP_HOLD_MS = 3500;
+const LOADER_STEP_FADE_MS = 700;
+const PROGRESS_INTERMEDIATE_DURATION_MS = 3000;
+const PROGRESS_FINAL_DURATION_MS = 2500;
+
+const delay = (ms: number) => new Promise<void>((resolve) => {
+  setTimeout(resolve, ms);
+});
+
 const GENERATION_STEPS = [
   "North India glows with Malpua, mathris, Pakode and festive warmth!",
   "South India celebrates Diwali with polis, murukkus, payasam and memories!",
@@ -437,10 +446,50 @@ export default function Create() {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
+  const manualLoaderControlRef = useRef(false);
 
   const selectedBackground = useMemo(
     () => BACKGROUNDS.find((b) => b.id === bg) ?? BACKGROUNDS[0],
     [bg],
+  );
+
+  const animateProgress = useCallback(
+    (start: number, end: number, duration: number) => {
+      if (duration <= 0) {
+        setGenerationProgress(end);
+        return Promise.resolve();
+      }
+
+      return new Promise<void>((resolve) => {
+        if (
+          typeof window === "undefined" ||
+          typeof window.requestAnimationFrame !== "function"
+        ) {
+          setGenerationProgress(end);
+          resolve();
+          return;
+        }
+
+        let startTimestamp: number | null = null;
+        const stepFrame = (timestamp: number) => {
+          if (startTimestamp === null) {
+            startTimestamp = timestamp;
+          }
+          const elapsed = timestamp - startTimestamp;
+          const progress = Math.min(elapsed / duration, 1);
+          const value = start + (end - start) * progress;
+          setGenerationProgress(value);
+          if (progress < 1) {
+            window.requestAnimationFrame(stepFrame);
+          } else {
+            resolve();
+          }
+        };
+
+        window.requestAnimationFrame(stepFrame);
+      });
+    },
+    [setGenerationProgress],
   );
 
   // Load canvas-record only on desktop devices
@@ -685,23 +734,31 @@ export default function Create() {
 
   // Cycle through generation steps while loading
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (loading) {
-      setGenerationStep(0);
-      setIsFading(false);
-      interval = setInterval(() => {
-        // Start fade out
-        setIsFading(true);
+    if (!loading || manualLoaderControlRef.current) {
+      return;
+    }
 
-        // After fade out completes, change step and fade in
-        setTimeout(() => {
+    let holdTimeout: ReturnType<typeof setTimeout>;
+    let fadeTimeout: ReturnType<typeof setTimeout>;
+
+    const cycle = () => {
+      holdTimeout = setTimeout(() => {
+        setIsFading(true);
+        fadeTimeout = setTimeout(() => {
           setGenerationStep((prev) => (prev + 1) % GENERATION_STEPS.length);
           setIsFading(false);
-        }, 800); // Fade out duration
-      }, 10000); // Change step every 4 seconds
-    }
+          cycle();
+        }, LOADER_STEP_FADE_MS);
+      }, LOADER_STEP_HOLD_MS);
+    };
+
+    setGenerationStep(0);
+    setIsFading(false);
+    cycle();
+
     return () => {
-      if (interval) clearInterval(interval);
+      clearTimeout(holdTimeout);
+      clearTimeout(fadeTimeout);
     };
   }, [loading]);
 
@@ -2771,7 +2828,7 @@ export default function Create() {
             throw netErr;
           }
 
-          console.log("📡 Upload response status:", uploadResponse.status);
+          console.log("�� Upload response status:", uploadResponse.status);
 
           if (!uploadResponse.ok) {
             const errorText = await uploadResponse.text().catch(() => "");
@@ -3080,6 +3137,7 @@ export default function Create() {
 
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
+    manualLoaderControlRef.current = true;
     setLoading(true);
     setResult(null);
     setGenerationStep(0);
@@ -3112,36 +3170,16 @@ export default function Create() {
         setGenerationStep(i);
         setIsFading(false);
 
-        // Calculate progress percentage with smoother increments
-        const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70; // 70% for steps, 30% for API call
+        const stepProgress = ((i + 1) / GENERATION_STEPS.length) * 70;
         setGenerationProgress(stepProgress);
 
-        // Add delay between steps for better UX (slower)
-        await new Promise((resolve) => setTimeout(resolve, 2000));
-
-        // Fade out current step
+        await delay(LOADER_STEP_HOLD_MS);
         setIsFading(true);
-        await new Promise((resolve) => setTimeout(resolve, 500));
+        await delay(LOADER_STEP_FADE_MS);
       }
 
-      // Animate progress from 70% to 90% over 1.5 seconds
-      const animateTo90 = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 70;
-          const increment = 20 / 30; // 20% over 30 steps (1.5 seconds at 50ms intervals)
-          const interval = setInterval(() => {
-            progress += increment;
-            if (progress >= 90) {
-              progress = 90;
-              clearInterval(interval);
-              resolve();
-            }
-            setGenerationProgress(progress);
-          }, 50); // 50ms intervals for smooth animation
-        });
-      };
-
-      await animateTo90();
+      setIsFading(false);
+      await animateProgress(70, 90, PROGRESS_INTERMEDIATE_DURATION_MS);
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -3158,27 +3196,9 @@ export default function Create() {
       }
       const json = await res.json();
 
-      // Animate progress from 90% to 100% over 1.5 seconds
-      const animateTo100 = () => {
-        return new Promise<void>((resolve) => {
-          let progress = 90;
-          const increment = 10 / 30; // 10% over 30 steps (1.5 seconds at 50ms intervals)
-          const interval = setInterval(() => {
-            progress += increment;
-            if (progress >= 100) {
-              progress = 100;
-              clearInterval(interval);
-              resolve();
-            }
-            setGenerationProgress(progress);
-          }, 50); // 50ms intervals for smooth animation
-        });
-      };
+      await animateProgress(90, 100, PROGRESS_FINAL_DURATION_MS);
 
-      await animateTo100();
-
-      // Small delay to ensure progress bar animation completes
-      await new Promise((resolve) => setTimeout(resolve, 500));
+      await delay(LOADER_STEP_FADE_MS);
 
       setResult(json?.image_url ?? json?.result_url ?? null);
       setResultData(json);
@@ -3209,6 +3229,7 @@ export default function Create() {
           "Failed to generate. Configure FAL_KEY in env and try again.",
       );
     } finally {
+      manualLoaderControlRef.current = false;
       setLoading(false);
     }
   };
