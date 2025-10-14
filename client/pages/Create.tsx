@@ -462,6 +462,10 @@ export default function Create() {
   } | null>(null);
   const [canvasRecordLoaded, setCanvasRecordLoaded] = useState(false);
   const [shareOpen, setShareOpen] = useState(false);
+  const [imageDownloading, setImageDownloading] = useState(false);
+  const [imageDownloadError, setImageDownloadError] = useState<string | null>(
+    null,
+  );
 
   const fileRef = useRef<HTMLInputElement>(null);
   const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
@@ -2959,7 +2963,7 @@ export default function Create() {
       document.body.removeChild(link);
       console.log("✅ Video download triggered");
     } catch (error) {
-      console.warn("⚠️ Direct download failed, opening in new tab:", error);
+      console.warn("��️ Direct download failed, opening in new tab:", error);
       window.open(href, "_blank", "noopener,noreferrer");
     } finally {
       if (shouldRevoke) {
@@ -3109,7 +3113,7 @@ export default function Create() {
       }
 
       const message =
-        "Check out my festive Diwali postcard video! 🎆✨ #Diwali #Festive #Postcard";
+        "Check out my festive Diwali postcard video! 🎆��� #Diwali #Festive #Postcard";
       const socialUrl =
         buildSocialUrl(cloudinaryVideoUrl) || cloudinaryVideoUrl;
       const twitterUrl = `https://twitter.com/intent/tweet?text=${encodeURIComponent(message)}&url=${encodeURIComponent(socialUrl)}`;
