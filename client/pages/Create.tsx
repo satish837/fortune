@@ -994,7 +994,7 @@ export default function Create() {
       setIsOptimizing(true);
       console.log("🔄 Optimizing image with TinyPNG...");
       console.log(
-        "📊 Original file size:",
+        "�� Original file size:",
         (file.size / (1024 * 1024)).toFixed(2),
         "MB",
       );
@@ -2776,6 +2776,208 @@ export default function Create() {
       setIsRecording(false);
     }
   };
+
+  const downloadPostcardImage = useCallback(async () => {
+    if (!result) {
+      setImageDownloadError("No generated postcard image available.");
+      return;
+    }
+
+    if (typeof document === "undefined") {
+      return;
+    }
+
+    try {
+      setImageDownloadError(null);
+      setImageDownloading(true);
+
+      const cardContainer = document.querySelector(
+        ".generated-card-container",
+      ) as HTMLElement | null;
+
+      if (!cardContainer) {
+        throw new Error("Generated postcard is not available on the page.");
+      }
+
+      const rect = cardContainer.getBoundingClientRect();
+      const canvas = document.createElement("canvas");
+      canvas.width = VIDEO_WIDTH;
+      canvas.height = VIDEO_HEIGHT;
+
+      const ctx = canvas.getContext("2d");
+      if (!ctx) {
+        throw new Error("Unable to create drawing context.");
+      }
+
+      const { offsetX, offsetY, drawWidth, drawHeight } =
+        getVideoCanvasMetrics(rect);
+
+      ctx.fillStyle = "#1f2937";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+      const backgroundVideo = cardContainer.querySelector(
+        'video[src*="background"]',
+      ) as HTMLVideoElement | null;
+
+      let backgroundDrawn = false;
+
+      if (backgroundVideo) {
+        try {
+          await waitForVideoFrame(backgroundVideo);
+          if (
+            backgroundVideo.videoWidth > 0 &&
+            backgroundVideo.videoHeight > 0
+          ) {
+            ctx.drawImage(
+              backgroundVideo,
+              offsetX,
+              offsetY,
+              drawWidth,
+              drawHeight,
+            );
+            backgroundDrawn = true;
+          }
+        } catch (error) {
+          console.warn("⚠️ Unable to capture background frame:", error);
+        }
+      }
+
+      if (!backgroundDrawn) {
+        const gradient = ctx.createLinearGradient(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        gradient.addColorStop(0, "#fb923c");
+        gradient.addColorStop(1, "#f97316");
+        ctx.fillStyle = gradient;
+        ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+
+        if (selectedBackground?.fallback) {
+          ctx.save();
+          ctx.font = `${Math.round(drawWidth * 0.35)}px Arial`;
+          ctx.textAlign = "center";
+          ctx.textBaseline = "middle";
+          ctx.fillStyle = "rgba(255, 255, 255, 0.85)";
+          ctx.fillText(selectedBackground.fallback, VIDEO_WIDTH / 2, VIDEO_HEIGHT / 2);
+          ctx.restore();
+        }
+      }
+
+      const [generatedImg, frameImg] = await Promise.all([
+        loadHtmlImage(result),
+        loadHtmlImage("/photo-frame-story.png"),
+      ]);
+
+      ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
+      ctx.drawImage(frameImg, offsetX, offsetY, drawWidth, drawHeight);
+
+      if (greeting) {
+        ctx.save();
+        ctx.fillStyle = "#ffffff";
+        ctx.font = getGreetingFont();
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.shadowColor = "rgba(0, 0, 0, 0.35)";
+        ctx.shadowBlur = 8;
+        ctx.shadowOffsetX = 2;
+        ctx.shadowOffsetY = 2;
+
+        const maxWidth = drawWidth - 80;
+        const lineHeight = 28;
+        const wrapText = (context: CanvasRenderingContext2D) => {
+          const words = greeting.split(" ");
+          const lines: string[] = [];
+          let currentLine = "";
+
+          for (const word of words) {
+            const candidate = currentLine ? `${currentLine} ${word}` : word;
+            const exceeds = context.measureText(candidate).width > maxWidth;
+            if (exceeds && currentLine) {
+              lines.push(currentLine);
+              currentLine = word;
+            } else if (exceeds) {
+              lines.push(candidate);
+              currentLine = "";
+            } else {
+              currentLine = candidate;
+            }
+          }
+
+          if (currentLine) {
+            lines.push(currentLine);
+          }
+
+          return lines;
+        };
+
+        const lines = wrapText(ctx);
+        const baseY =
+          offsetY + drawHeight - 80 - ((lines.length - 1) * lineHeight) / 2;
+
+        lines.forEach((line, index) => {
+          ctx.fillText(line, VIDEO_WIDTH / 2, baseY + index * lineHeight);
+        });
+
+        ctx.restore();
+      }
+
+      await new Promise<void>((resolve, reject) => {
+        canvas.toBlob((blob) => {
+          if (!blob) {
+            reject(new Error("Failed to create image blob."));
+            return;
+          }
+
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement("a");
+          link.href = url;
+          link.download = `diwali-postcard-${Date.now()}.png`;
+          document.body.appendChild(link);
+          link.click();
+          document.body.removeChild(link);
+
+          setTimeout(() => URL.revokeObjectURL(url), 500);
+          resolve();
+        }, "image/png");
+      });
+
+      try {
+        toast({
+          title: "Postcard image downloaded",
+          description: "Your festive postcard image is saved to your device.",
+        });
+      } catch (toastError) {
+        console.warn("Toast invocation failed:", toastError);
+      }
+    } catch (error) {
+      console.error("Failed to download postcard image:", error);
+      setImageDownloadError(
+        error instanceof Error
+          ? error.message
+          : "Failed to download postcard image.",
+      );
+      try {
+        toast({
+          title: "Download failed",
+          description:
+            "Unable to prepare the postcard image. Please try again.",
+        });
+      } catch (toastError) {
+        console.warn("Toast invocation failed:", toastError);
+      }
+    } finally {
+      setImageDownloading(false);
+    }
+  }, [
+    getGreetingFont,
+    greeting,
+    loadHtmlImage,
+    result,
+    selectedBackground,
+    waitForVideoFrame,
+  ]);
 
   const uploadVideoToCloudinary = async (videoUrl: string | Blob) => {
     try {
