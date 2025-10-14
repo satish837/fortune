@@ -241,7 +241,7 @@ const BACKGROUNDS = [
     video: "/background/2.mp4",
     fallback: "✨",
   },
-  { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "🕯️" },
+  { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "���️" },
   {
     id: "4",
     name: "Diwali Sparkle",
@@ -884,7 +884,7 @@ export default function Create() {
         }
       }
 
-      console.log("���� Component cleanup completed");
+      console.log("🧹 Component cleanup completed");
     };
   }, [canvasRecorder, recordedVideoUrl]);
 
@@ -1007,7 +1007,7 @@ export default function Create() {
       setIsOptimizing(false);
       return optimizedFile;
     } catch (error) {
-      console.error("�� TinyPNG optimization failed:", error);
+      console.error("❌ TinyPNG optimization failed:", error);
       console.log("⚠️ Using original file without optimization");
       setIsOptimizing(false);
       setOptimizationResult(null);
@@ -1732,6 +1732,8 @@ export default function Create() {
         // If it's not a Blob, create one
         videoBlob = new Blob([videoData as BlobPart], { type: "video/mp4" });
       }
+
+      updateRecordedMimeType(videoBlob.type);
 
       // Validate video compatibility
       const isCompatible = validateVideoCompatibility(videoBlob);
@@ -2756,7 +2758,7 @@ export default function Create() {
         const json = await unsignedRes.json();
         const url = json.secure_url || json.url;
         if (!url) throw new Error("Unsigned upload returned no URL");
-        console.log("�� Video uploaded to Cloudinary (unsigned):", url);
+        console.log("✅ Video uploaded to Cloudinary (unsigned):", url);
         setCloudinaryVideoUrl(url);
         return url;
       };
@@ -2773,7 +2775,7 @@ export default function Create() {
           },
           body: arrayBuffer,
         });
-        console.log("📡 Upload response status:", uploadResponse.status);
+        console.log("���� Upload response status:", uploadResponse.status);
         if (!uploadResponse.ok) {
           const errorText = await uploadResponse.text().catch(() => "");
           console.warn(
