@@ -733,7 +733,7 @@ export default function Create() {
   useEffect(() => {
     const initCanvasRecorder = async () => {
       try {
-        console.log("🔄 Canvas recorder ready to initialize");
+        console.log("��� Canvas recorder ready to initialize");
         // Canvas recorder will be initialized when needed
       } catch (error) {
         console.error("❌ Canvas recorder initialization failed:", error);
@@ -1187,6 +1187,7 @@ export default function Create() {
           const videoBlob = new Blob(chunks, { type: "video/mp4" });
           updateRecordedMimeType(videoBlob.type);
           const videoUrl = URL.createObjectURL(videoBlob);
+          setRecordedVideoBlob(videoBlob);
 
           console.log("✅ Fallback video generated:", {
             size: videoBlob.size,
