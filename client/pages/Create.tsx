@@ -73,6 +73,27 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
+const VIDEO_WIDTH = 720;
+const VIDEO_HEIGHT = 1280;
+
+interface VideoCanvasMetrics {
+  scale: number;
+  drawWidth: number;
+  drawHeight: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+const getVideoCanvasMetrics = (rect: DOMRect): VideoCanvasMetrics => {
+  const scale = Math.min(VIDEO_WIDTH / rect.width, VIDEO_HEIGHT / rect.height);
+  const drawWidth = rect.width * scale;
+  const drawHeight = rect.height * scale;
+  const offsetX = (VIDEO_WIDTH - drawWidth) / 2;
+  const offsetY = (VIDEO_HEIGHT - drawHeight) / 2;
+
+  return { scale, drawWidth, drawHeight, offsetX, offsetY };
+};
+
 // Circular Progress Bar Component
 const CircularProgressBar = ({
   percentage,
