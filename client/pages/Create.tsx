@@ -258,8 +258,8 @@ const PRESET_GREETINGS = [
   "Sharing the flavours of #DiwaliKaFortune with you",
 ];
 
-const LOADER_STEP_HOLD_MS = 2000;
-const LOADER_STEP_FADE_MS = 500;
+const LOADER_STEP_HOLD_MS = 4500; // 4.5 seconds hold
+const LOADER_STEP_FADE_MS = 500;  // 0.5 seconds fade = 5 seconds total
 const PROGRESS_INCREMENT_INTERVAL_MS = 1500;
 
 const delay = (ms: number) =>
@@ -821,33 +821,50 @@ export default function Create() {
 
   // Cycle through generation steps while rotating
   useEffect(() => {
-    if (!isRotating || manualLoaderControlRef.current) {
+    console.log("🔄 Loader rotation useEffect triggered:", { isRotating, loading, manualLoaderControl: manualLoaderControlRef.current });
+    
+    if (!isRotating) {
+      console.log("❌ Loader rotation skipped: isRotating is false");
       return;
+    }
+    
+    // Temporarily disable manualLoaderControlRef check for debugging
+    if (manualLoaderControlRef.current) {
+      console.log("⚠️ Manual loader control is active, but continuing anyway for debugging");
     }
 
     let holdTimeout: ReturnType<typeof setTimeout>;
     let fadeTimeout: ReturnType<typeof setTimeout>;
 
     const cycle = () => {
+      console.log("🔄 Starting loader cycle, current step:", generationStep);
       holdTimeout = setTimeout(() => {
+        console.log("🔄 Starting fade out for step:", generationStep);
         setIsFading(true);
         fadeTimeout = setTimeout(() => {
-          setGenerationStep((prev) => (prev + 1) % GENERATION_STEPS.length);
+          setGenerationStep((prev) => {
+            const nextStep = (prev + 1) % GENERATION_STEPS.length;
+            console.log("🔄 Moving to next step:", prev, "->", nextStep);
+            return nextStep;
+          });
           setIsFading(false);
           cycle();
         }, LOADER_STEP_FADE_MS);
       }, LOADER_STEP_HOLD_MS);
     };
 
+    // Reset and start cycling
+    console.log("🔄 Resetting and starting loader rotation");
     setGenerationStep(0);
     setIsFading(false);
     cycle();
 
     return () => {
+      console.log("🔄 Cleaning up loader rotation timeouts");
       clearTimeout(holdTimeout);
       clearTimeout(fadeTimeout);
     };
-  }, [isRotating]);
+  }, [isRotating, loading]); // Also depend on loading to ensure it starts when generation begins
 
   // Auto-start video recording when result is generated
   // VIDEO FUNCTIONALITY COMMENTED OUT
@@ -3771,6 +3788,7 @@ export default function Create() {
     isGeneratingRef.current = true;
     manualLoaderControlRef.current = true;
     setLoading(true);
+    console.log("🔄 Starting generation, setting isRotating to true");
     setIsRotating(true); // Start the rotation
     setResult(null);
     setGenerationStep(0);
@@ -3876,11 +3894,12 @@ export default function Create() {
           "Failed to generate. Configure FAL_KEY in env and try again.",
       );
     } finally {
+      console.log("🔄 Generation complete, stopping rotation");
       clearProgressInterval();
       manualLoaderControlRef.current = false;
       isGeneratingRef.current = false;
       setLoading(false);
-      // Keep rotation going - don't stop it here
+      setIsRotating(false); // Stop rotation when generation is complete
     }
   };
 

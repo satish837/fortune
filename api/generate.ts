@@ -281,10 +281,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       finalPersonImageUrl = personImageUrl;
     } else {
       // Convert base64 to buffer and upload
-      console.log('Converting base64 to buffer...');
-      const personImageBuffer = Buffer.from(personImageBase64.split(',')[1], 'base64');
-      console.log('Buffer created, size:', personImageBuffer.length);
-      
+    console.log('Converting base64 to buffer...');
+    const personImageBuffer = Buffer.from(personImageBase64.split(',')[1], 'base64');
+    console.log('Buffer created, size:', personImageBuffer.length);
+    
       // Basic image validation
       if (personImageBuffer.length < 1000) {
         console.error('Image too small, size:', personImageBuffer.length);
@@ -299,7 +299,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       }
       
       // Upload person image to Cloudinary
-      console.log('Uploading person image to Cloudinary...');
+    console.log('Uploading person image to Cloudinary...');
       finalPersonImageUrl = await uploadToCloudinaryFromBuffer(personImageBuffer, cloudName, cloudinaryApiKey, cloudinaryApiSecret, uploadPreset);
       console.log('Cloudinary upload successful, URL:', finalPersonImageUrl);
     }
