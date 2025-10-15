@@ -3653,13 +3653,17 @@ export default function Create() {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: mimeType });
 
+      // Generate a unique public ID
+      const publicId = `person-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      
       // Get Cloudinary signature for signed upload
       const signatureRes = await fetch("/api/cloudinary-signature", {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           folder: 'diwali-postcards/person-images',
-          public_id: `person-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+          publicId: publicId,
+          resourceType: 'image'
         })
       });
 
@@ -3676,6 +3680,7 @@ export default function Create() {
       formData.append('signature', signatureData.signature);
       formData.append('folder', 'diwali-postcards/person-images');
       formData.append('public_id', signatureData.publicId);
+      formData.append('resource_type', 'image');
 
       // Upload to Cloudinary with signed upload
       const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`, {
