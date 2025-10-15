@@ -23,6 +23,9 @@
     },
     "api/users.ts": {
       "maxDuration": 30
+    },
+    "api/generate-video.ts": {
+      "maxDuration": 300
     }
   },
   "routes": [

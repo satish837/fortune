@@ -15,6 +15,7 @@ import { handleOptimizeImage } from "./routes/optimize-image";
 import { handleCloudinaryConfig } from "./routes/cloudinary-config";
 import { handleCloudinarySignature } from "./routes/cloudinary-signature";
 import { handleUploadVideo } from "./routes/upload-video";
+import { handleGenerateVideo } from "./routes/generate-video";
 
 const CLOUDINARY_BASE_URL = "https://api.cloudinary.com/v1_1";
 
@@ -46,6 +47,7 @@ export function createServer() {
   app.get("/api/tinypng-config", handleTinyPNGConfig);
   app.post("/api/optimize-image", handleOptimizeImage);
   app.post("/api/upload-video", handleUploadVideo);
+  app.post("/api/generate-video", handleGenerateVideo);
 
   // Get all users (for testing purposes)
   app.get("/api/users", async (req, res) => {
