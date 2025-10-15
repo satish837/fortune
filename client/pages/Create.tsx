@@ -4005,8 +4005,6 @@ export default function Create() {
                         Optimizing your image...
                       </div>
                       <div className="text-sm text-orange-700 text-center">
-                        Compressing with TinyPNG API
-                        <br />
                         This may take a few seconds
                       </div>
                       <div className="w-full max-w-xs bg-orange-200 rounded-full h-2">
@@ -4057,24 +4055,7 @@ export default function Create() {
                   </div>
                 )}
 
-                {/* Optimization result display */}
-                {optimizationResult && (
-                  <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <p className="text-green-700 text-sm font-medium">
-                        Image optimized successfully!
-                      </p>
-                    </div>
-                    <div className="text-xs text-green-600 space-y-1">
-                      <div>Original: {(optimizationResult.originalSize / (1024 * 1024)).toFixed(2)} MB</div>
-                      <div>Optimized: {(optimizationResult.optimizedSize / (1024 * 1024)).toFixed(2)} MB</div>
-                      <div className="font-medium">
-                        Saved: {optimizationResult.compressionRatio.toFixed(1)}% space
-                      </div>
-                    </div>
-                  </div>
-                )}
+                
 
                 {/* File size info */}
                 <p className="text-xs text-orange-900/60 mt-2">
