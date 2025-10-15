@@ -3633,6 +3633,51 @@ export default function Create() {
     setIsRotating(true);
   };
 
+  const uploadPersonImageToCloudinary = async (base64Data: string): Promise<string> => {
+    try {
+      // Convert base64 to blob
+      const base64 = base64Data.split(',')[1];
+      const mimeType = base64Data.split(',')[0].split(':')[1].split(';')[0];
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      const blob = new Blob([byteArray], { type: mimeType });
+
+      // Get Cloudinary config
+      const configRes = await fetch("/api/cloudinary-config");
+      if (!configRes.ok) {
+        throw new Error("Failed to get Cloudinary config");
+      }
+      const config = await configRes.json();
+
+      // Create form data
+      const formData = new FormData();
+      formData.append('file', blob, 'person-image.jpg');
+      formData.append('upload_preset', config.uploadPreset);
+      formData.append('folder', 'diwali-postcards/person-images');
+
+      // Upload to Cloudinary
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!uploadRes.ok) {
+        const error = await uploadRes.json();
+        throw new Error(`Cloudinary upload failed: ${error.error?.message || uploadRes.statusText}`);
+      }
+
+      const result = await uploadRes.json();
+      return result.secure_url;
+    } catch (error) {
+      console.error("Error uploading person image to Cloudinary:", error);
+      throw error;
+    }
+  };
+
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
     manualLoaderControlRef.current = true;
@@ -3668,11 +3713,16 @@ export default function Create() {
       // Let the useEffect handle the generation steps rotation
       // No need to manually cycle through steps here
 
+      // Upload person image to Cloudinary first to avoid 413 error
+      console.log("Uploading person image to Cloudinary...");
+      const personImageUrl = await uploadPersonImageToCloudinary(photoData);
+      console.log("Person image uploaded:", personImageUrl);
+
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          personImageBase64: photoData,
+          personImageUrl: personImageUrl,
           dishImageUrl: selectedDish.image,
           background: bg,
           greeting,

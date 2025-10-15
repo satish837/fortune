@@ -252,46 +252,57 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     // Get request data
-    const { personImageBase64, dishImageUrl, background, greeting } = req.body;
+    const { personImageUrl, personImageBase64, dishImageUrl, background, greeting } = req.body;
 
     console.log('Request data:', { 
-      hasPersonImage: !!personImageBase64, 
+      hasPersonImageUrl: !!personImageUrl,
+      hasPersonImageBase64: !!personImageBase64, 
       hasDishImage: !!dishImageUrl, 
       background, 
       greeting 
     });
 
-    if (!personImageBase64 || !dishImageUrl) {
+    if ((!personImageUrl && !personImageBase64) || !dishImageUrl) {
       console.error('Missing required fields:', { 
+        personImageUrl: !!personImageUrl,
         personImageBase64: !!personImageBase64, 
         dishImageUrl: !!dishImageUrl 
       });
-      res.status(400).json({ error: 'personImageBase64 and dishImageUrl are required' });
+      res.status(400).json({ error: 'personImageUrl (or personImageBase64) and dishImageUrl are required' });
       return;
     }
 
-    // Convert base64 to buffer
-    console.log('Converting base64 to buffer...');
-    const personImageBuffer = Buffer.from(personImageBase64.split(',')[1], 'base64');
-    console.log('Buffer created, size:', personImageBuffer.length);
+    // Handle person image - either from URL or base64
+    let finalPersonImageUrl: string;
     
-    // Basic image validation
-    if (personImageBuffer.length < 1000) {
-      console.error('Image too small, size:', personImageBuffer.length);
-      res.status(400).json({ error: 'Image file is too small or corrupted' });
-      return;
+    if (personImageUrl) {
+      // Use the provided URL directly
+      console.log('Using provided person image URL:', personImageUrl);
+      finalPersonImageUrl = personImageUrl;
+    } else {
+      // Convert base64 to buffer and upload
+      console.log('Converting base64 to buffer...');
+      const personImageBuffer = Buffer.from(personImageBase64.split(',')[1], 'base64');
+      console.log('Buffer created, size:', personImageBuffer.length);
+      
+      // Basic image validation
+      if (personImageBuffer.length < 1000) {
+        console.error('Image too small, size:', personImageBuffer.length);
+        res.status(400).json({ error: 'Image file is too small or corrupted' });
+        return;
+      }
+      
+      if (personImageBuffer.length > 10 * 1024 * 1024) { // 10MB limit
+        console.error('Image too large, size:', personImageBuffer.length);
+        res.status(400).json({ error: 'Image file is too large (max 10MB)' });
+        return;
+      }
+      
+      // Upload person image to Cloudinary
+      console.log('Uploading person image to Cloudinary...');
+      finalPersonImageUrl = await uploadToCloudinaryFromBuffer(personImageBuffer, cloudName, cloudinaryApiKey, cloudinaryApiSecret, uploadPreset);
+      console.log('Cloudinary upload successful, URL:', finalPersonImageUrl);
     }
-    
-    if (personImageBuffer.length > 10 * 1024 * 1024) { // 10MB limit
-      console.error('Image too large, size:', personImageBuffer.length);
-      res.status(400).json({ error: 'Image file is too large (max 10MB)' });
-      return;
-    }
-    
-    // Upload person image to Cloudinary instead of FAL
-    console.log('Uploading person image to Cloudinary...');
-    const personImageUrl = await uploadToCloudinaryFromBuffer(personImageBuffer, cloudName, cloudinaryApiKey, cloudinaryApiSecret, uploadPreset);
-    console.log('Cloudinary upload successful, URL:', personImageUrl);
     
     // Convert dish image path to full URL if it's a local path
     let productImageUrl = dishImageUrl;
@@ -303,7 +314,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const baseInstruction = `Place the dish image into the person's hands. Make the dish smaller and position it below the face level. Keep the person's face fully visible and clear. Maintain the original background.`;
 
     const payload = {
-      person_image_url: personImageUrl,
+      person_image_url: finalPersonImageUrl,
       product_image_url: productImageUrl,
       prompt: baseInstruction,
       negative_prompt: "cropped face, face cut off, partial face, blurry, low quality, distorted, extra hands, multiple people, extra limbs, deformed hands, bad anatomy, extra fingers, missing fingers, extra arms, missing arms, extra legs, missing legs, malformed limbs, disfigured, bad proportions, extra heads, missing head, extra body parts, missing body parts, duplicate, crowd, group of people, other people, strangers, unknown people, random people, background people, people in background, additional people, extra people, more people, too many people, crowded, cluttered, busy, messy, disorganized, chaotic, confusing, unclear, ambiguous, uncertain, vague, indistinct, blurry, out of focus, low resolution, pixelated, grainy, noisy, artifacts, compression artifacts, jpeg artifacts, quality issues, technical issues, rendering issues, generation issues, AI artifacts, machine artifacts, computer generated artifacts, synthetic artifacts, fake, artificial, unnatural, unrealistic, impossible, illogical, nonsensical, absurd, ridiculous, silly, stupid, foolish, idiotic, moronic, asinine, inane, pointless, useless, worthless, meaningless, empty, void, nothing, blank, white, black, solid color, monochrome, single color, no color, colorless, drab, dull, boring, uninteresting, plain, simple, basic, elementary, primitive, crude, rough, unrefined, unfinished, incomplete, partial, half, quarter, third, fraction, piece, part, segment, section, portion, bit, chunk, slice, fragment, shard, splinter, chip, flake, particle, atom, molecule, cell, unit, component, element, ingredient, constituent, modified dish, changed dish, altered dish, transformed dish, different dish, wrong dish, incorrect dish, dish modification, dish alteration, dish transformation, dish style change, dish color change, dish shape change, new background, added background, changed background, modified background, different background, background change, background modification, background addition, extra background, additional background, background replacement, background substitution",
