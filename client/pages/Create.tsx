@@ -473,6 +473,7 @@ export default function Create() {
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
   );
+  const isGeneratingRef = useRef(false);
 
   const clearProgressInterval = useCallback(() => {
     if (progressIntervalRef.current) {
@@ -809,6 +810,7 @@ export default function Create() {
   useEffect(() => {
     return () => {
       clearProgressInterval();
+      isGeneratingRef.current = false;
     };
   }, [clearProgressInterval]);
 
@@ -3747,6 +3749,14 @@ export default function Create() {
 
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
+    
+    // Prevent multiple simultaneous calls
+    if (isGeneratingRef.current || loading) {
+      console.log("Generation already in progress, ignoring duplicate call");
+      return;
+    }
+    
+    isGeneratingRef.current = true;
     manualLoaderControlRef.current = true;
     setLoading(true);
     setIsRotating(true); // Start the rotation
@@ -3840,6 +3850,7 @@ export default function Create() {
     } finally {
       clearProgressInterval();
       manualLoaderControlRef.current = false;
+      isGeneratingRef.current = false;
       setLoading(false);
       // Keep rotation going - don't stop it here
     }
