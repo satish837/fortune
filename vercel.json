@@ -1,16 +1,28 @@
 {
   "version": 2,
-  "buildCommand": "npm run build:client",
+  "buildCommand": "npm run vercel-build",
   "outputDirectory": "dist/spa",
   "functions": {
     "api/generate.ts": {
       "maxDuration": 300
     },
-    "api/test-bg-removal.ts": {
-      "maxDuration": 300
+    "api/cloudinary-signature.ts": {
+      "maxDuration": 30
     },
-    "api/upload-video.ts": {
-      "maxDuration": 60
+    "api/cloudinary-config.ts": {
+      "maxDuration": 30
+    },
+    "api/send-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/verify-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/existing-user-otp.ts": {
+      "maxDuration": 30
+    },
+    "api/users.ts": {
+      "maxDuration": 30
     }
   },
   "routes": [
@@ -30,5 +42,8 @@
       "src": "/(.*)",
       "dest": "/index.html"
     }
-  ]
+  ],
+  "env": {
+    "NODE_ENV": "production"
+  }
 }

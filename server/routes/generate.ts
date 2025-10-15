@@ -452,9 +452,10 @@ export const handleGenerate: RequestHandler = async (req, res) => {
     const cloudinaryApiKey = process.env.CLOUDINARY_API_KEY;
     const cloudinaryApiSecret = process.env.CLOUDINARY_API_SECRET;
 
-    const { personImageBase64, dishImageUrl, background, greeting } =
+    const { personImageUrl, personImageBase64, dishImageUrl, background, greeting } =
       req.body as {
-        personImageBase64: string;
+        personImageUrl?: string;
+        personImageBase64?: string;
         dishImageUrl: string;
         background?: string;
         greeting?: string;
@@ -462,24 +463,28 @@ export const handleGenerate: RequestHandler = async (req, res) => {
 
     console.log("Background video selected:", background);
 
-    if (!personImageBase64 || !dishImageUrl) {
+    if ((!personImageUrl && !personImageBase64) || !dishImageUrl) {
       res
         .status(400)
-        .json({ error: "personImageBase64 and dishImageUrl are required" });
+        .json({ error: "personImageUrl (or personImageBase64) and dishImageUrl are required" });
       return;
     }
 
-    // Parse the base64 image
-    const { buffer: personImageBuffer } = parseDataUrl(personImageBase64);
-    console.log("Person image buffer size:", personImageBuffer.length, "bytes");
-
-    // Remove background using Clipdrop
-    const clipdropApiKey =
-      "75f768c7813dc42a5c4948b5b6b79121c712116c7baff2c1f41e97f63485625e048406d24697dc623b77e785580d7f0e";
+    // Handle person image - either from URL or base64
     let uploadedPersonUrl: string;
-
-    // Upload original image to Cloudinary for FAL AI processing
-    uploadedPersonUrl = await uploadToCloudinaryFromDataUrl(personImageBase64);
+    
+    if (personImageUrl) {
+      // Use the provided URL directly
+      console.log('Using provided person image URL:', personImageUrl);
+      uploadedPersonUrl = personImageUrl;
+    } else {
+      // Parse the base64 image and upload to Cloudinary
+      const { buffer: personImageBuffer } = parseDataUrl(personImageBase64!);
+      console.log("Person image buffer size:", personImageBuffer.length, "bytes");
+      
+      // Upload original image to Cloudinary for FAL AI processing
+      uploadedPersonUrl = await uploadToCloudinaryFromDataUrl(personImageBase64!);
+    }
 
     // Convert local dish image path to full URL for FAL AI
     let dishImageUrlForFal = dishImageUrl;

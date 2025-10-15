@@ -73,27 +73,6 @@ const arrayBufferToBase64 = (buffer: ArrayBuffer) => {
   return btoa(binary);
 };
 
-// VIDEO FUNCTIONALITY - Constants uncommented but auto-trigger disabled
-const VIDEO_WIDTH = 720;
-const VIDEO_HEIGHT = 1280;
-
-interface VideoCanvasMetrics {
-  scale: number;
-  drawWidth: number;
-  drawHeight: number;
-  offsetX: number;
-  offsetY: number;
-}
-
-const getVideoCanvasMetrics = (rect: DOMRect): VideoCanvasMetrics => {
-  const scale = Math.min(VIDEO_WIDTH / rect.width, VIDEO_HEIGHT / rect.height);
-  const drawWidth = rect.width * scale;
-  const drawHeight = rect.height * scale;
-  const offsetX = (VIDEO_WIDTH - drawWidth) / 2;
-  const offsetY = (VIDEO_HEIGHT - drawHeight) / 2;
-
-  return { scale, drawWidth, drawHeight, offsetX, offsetY };
-};
 
 // Circular Progress Bar Component
 const CircularProgressBar = ({
@@ -428,29 +407,8 @@ export default function Create() {
   const [isFading, setIsFading] = useState(false);
   const [isRotating, setIsRotating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
-  // VIDEO FUNCTIONALITY - State variables uncommented but auto-trigger disabled
-  const [isRecording, setIsRecording] = useState(false);
-  const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
-  const [recordedVideoBlob, setRecordedVideoBlob] = useState<Blob | null>(null);
-  const [cloudinaryVideoUrl, setCloudinaryVideoUrl] = useState<string | null>(
-    null,
-  );
-  const [videoUploading, setVideoUploading] = useState(false);
-  const [uploadError, setUploadError] = useState<string | null>(null);
-  const [isOptimizing, setIsOptimizing] = useState(false);
-  const [optimizationResult, setOptimizationResult] = useState<{
-    originalSize: number;
-    optimizedSize: number;
-    compressionRatio: number;
-  } | null>(null);
   const [showFooter, setShowFooter] = useState(false);
-  const [canvasRecorder, setCanvasRecorder] = useState<any>(null);
-  const [recorderStatus, setRecorderStatus] = useState<string>("idle");
-  const [recordingProgress, setRecordingProgress] = useState(0);
   const [downloading, setDownloading] = useState(false);
-  const [videoGenerationError, setVideoGenerationError] = useState<
-    string | null
-  >(null);
   const [isMobile, setIsMobile] = useState(false);
   const [isPageCrashed, setIsPageCrashed] = useState(false);
   const [memoryUsage, setMemoryUsage] = useState<number | null>(null);
@@ -468,10 +426,6 @@ export default function Create() {
 
   const fileRef = useRef<HTMLInputElement>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  // VIDEO FUNCTIONALITY - Refs uncommented but auto-trigger disabled
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordedChunksRef = useRef<Blob[]>([]);
-  const recordedMimeTypeRef = useRef<string>("video/mp4");
   const manualLoaderControlRef = useRef(false);
   const progressIntervalRef = useRef<ReturnType<typeof setInterval> | null>(
     null,
@@ -529,51 +483,6 @@ export default function Create() {
     });
   }, []);
 
-  // VIDEO FUNCTIONALITY - Functions uncommented but auto-trigger disabled
-  const waitForVideoFrame = useCallback((video: HTMLVideoElement) => {
-    return new Promise<void>((resolve, reject) => {
-      if (!video) {
-        reject(new Error("Video element not found"));
-        return;
-      }
-
-      function cleanup() {
-        video.removeEventListener("loadeddata", handleLoadedData);
-        video.removeEventListener("error", handleError);
-      }
-
-      function handleLoadedData() {
-        cleanup();
-        resolve();
-      }
-
-      function handleError() {
-        cleanup();
-        reject(new Error("Failed to load video frame"));
-      }
-
-      if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-        resolve();
-        return;
-      }
-
-      video.addEventListener("loadeddata", handleLoadedData, { once: true });
-      video.addEventListener("error", handleError, { once: true });
-
-      try {
-        if (video.paused) {
-          void video.play().catch(() => {
-            // Playback may be blocked; rely on loadeddata event instead
-          });
-        }
-        if (video.readyState === HTMLMediaElement.HAVE_NOTHING) {
-          video.load();
-        }
-      } catch (error) {
-        console.warn("Video preparation failed:", error);
-      }
-    });
-  }, []);
 
   const getGreetingFont = useCallback(
     (baseSize = 20) => {
@@ -789,20 +698,6 @@ export default function Create() {
     loadCloudinaryConfig();
   }, []);
 
-  // VIDEO FUNCTIONALITY COMMENTED OUT
-  // Initialize Canvas Recorder
-  // useEffect(() => {
-  //   const initCanvasRecorder = async () => {
-  //     try {
-  //       console.log("🔄 Canvas recorder ready to initialize");
-  //       // Canvas recorder will be initialized when needed
-  //     } catch (error) {
-  //       console.error("❌ Canvas recorder initialization failed:", error);
-  //     }
-  //   };
-
-  //   initCanvasRecorder();
-  // }, []);
 
   // Logout function
   const handleLogout = () => {
@@ -849,16 +744,6 @@ export default function Create() {
     };
   }, [isRotating]);
 
-  // Auto-start video recording when result is generated
-  // VIDEO FUNCTIONALITY COMMENTED OUT
-  // useEffect(() => {
-  //   if (result && resultData && !recordedVideoUrl && !isRecording) {
-  //     // Small delay to ensure the video is playing
-  //     setTimeout(() => {
-  //       startVideoRecording();
-  //     }, 1000);
-  //   }
-  // }, [result, resultData, recordedVideoUrl, isRecording]);
 
   // Show footer only when scrolled to bottom
   useEffect(() => {
@@ -879,48 +764,47 @@ export default function Create() {
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
 
-  // VIDEO FUNCTIONALITY COMMENTED OUT
   // Cleanup effect to prevent memory leaks
-  // useEffect(() => {
-  //   return () => {
-  //     // Cleanup animation loop
-  //     if ((window as any).animationCleanup) {
-  //       (window as any).animationCleanup();
-  //       delete (window as any).animationCleanup;
-  //     }
+  useEffect(() => {
+    return () => {
+      // Cleanup animation loop
+      if ((window as any).animationCleanup) {
+        (window as any).animationCleanup();
+        delete (window as any).animationCleanup;
+      }
 
-  //     // Cleanup mobile animation loop
-  //     if ((window as any).mobileAnimationCleanup) {
-  //       (window as any).mobileAnimationCleanup();
-  //       delete (window as any).mobileAnimationCleanup;
-  //     }
+      // Cleanup mobile animation loop
+      if ((window as any).mobileAnimationCleanup) {
+        (window as any).mobileAnimationCleanup();
+        delete (window as any).mobileAnimationCleanup;
+      }
 
-  //     // Cleanup canvas recorder
-  //     if (canvasRecorder) {
-  //       try {
-  //         canvasRecorder.stop();
-  //       } catch (error) {
-  //         console.warn("Error stopping canvas recorder on cleanup:", error);
-  //       }
-  //     }
+      // Cleanup canvas recorder
+      if (canvasRecorder) {
+        try {
+          canvasRecorder.stop();
+        } catch (error) {
+          console.warn("Error stopping canvas recorder on cleanup:", error);
+        }
+      }
 
-  //     // Cleanup video URLs
-  //     if (recordedVideoUrl) {
-  //       URL.revokeObjectURL(recordedVideoUrl);
-  //     }
+      // Cleanup video URLs
+      if (recordedVideoUrl) {
+        URL.revokeObjectURL(recordedVideoUrl);
+      }
 
-  //     // Cleanup media recorder
-  //     if (mediaRecorderRef.current) {
-  //       try {
-  //         mediaRecorderRef.current.stop();
-  //       } catch (error) {
-  //         console.warn("Error stopping media recorder on cleanup:", error);
-  //       }
-  //     }
+      // Cleanup media recorder
+      if (mediaRecorderRef.current) {
+        try {
+          mediaRecorderRef.current.stop();
+        } catch (error) {
+          console.warn("Error stopping media recorder on cleanup:", error);
+        }
+      }
 
-  //     console.log("🧹 Component cleanup completed");
-  //   };
-  // }, [canvasRecorder, recordedVideoUrl]);
+      console.log("🧹 Component cleanup completed");
+    };
+  }, [canvasRecorder, recordedVideoUrl]);
 
   // Memory monitoring to prevent crashes
   useEffect(() => {
@@ -1089,215 +973,7 @@ export default function Create() {
     }
   };
 
-  // Check browser video format support
-  const checkVideoFormatSupport = () => {
-    const formats = [
-      { type: "video/mp4;codecs=h264", name: "MP4 (H.264)" },
-      { type: "video/mp4", name: "MP4" },
-      { type: "video/webm;codecs=vp9", name: "WebM (VP9)" },
-      { type: "video/webm;codecs=vp8", name: "WebM (VP8)" },
-    ];
 
-    const supported = formats.filter((format) =>
-      MediaRecorder.isTypeSupported(format.type),
-    );
-    console.log(
-      "Supported video formats:",
-      supported.map((f) => f.name),
-    );
-
-    // Check if MP4 is supported
-    const mp4Supported = supported.some((f) => f.type.includes("mp4"));
-    if (!mp4Supported) {
-      console.warn(
-        "MP4 not supported - videos may not be compatible with all social media platforms",
-      );
-    }
-
-    return { supported, mp4Supported };
-  };
-
-  // Validate video compatibility with WhatsApp-specific checks
-  const validateVideoCompatibility = (videoBlob: Blob): boolean => {
-    const maxSize = 16 * 1024 * 1024; // 16MB limit for WhatsApp
-    const maxDuration = 60; // 60 seconds limit for WhatsApp
-    const minSize = 1000; // Minimum 1KB
-
-    console.log("📱 Validating WhatsApp compatibility:", {
-      size: videoBlob.size,
-      sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
-      maxSize: maxSize / (1024 * 1024),
-      type: videoBlob.type,
-    });
-
-    // WhatsApp file size limit
-    if (videoBlob.size > maxSize) {
-      console.warn("❌ Video too large for WhatsApp:", videoBlob.size);
-      return false;
-    }
-
-    // WhatsApp format requirement
-    if (!videoBlob.type.includes("mp4")) {
-      console.warn(
-        "❌ Video format not supported by WhatsApp:",
-        videoBlob.type,
-      );
-      return false;
-    }
-
-    // Check if video is too small (might be corrupted)
-    if (videoBlob.size < minSize) {
-      console.warn("❌ Video too small, might be corrupted:", videoBlob.size);
-      return false;
-    }
-
-    // WhatsApp prefers smaller files for better sharing
-    if (videoBlob.size > 8 * 1024 * 1024) {
-      // 8MB warning
-      console.warn(
-        "⚠️ Video is large for WhatsApp sharing:",
-        (videoBlob.size / (1024 * 1024)).toFixed(2),
-        "MB",
-      );
-    }
-
-    console.log("✅ Video is WhatsApp compatible");
-    return true;
-  };
-
-  // Fallback video generation using MediaRecorder
-  const generateFallbackVideo = async (): Promise<string | null> => {
-    try {
-      console.log("🔄 Generating fallback video using MediaRecorder...");
-
-      const canvas = canvasRef.current;
-      if (!canvas) {
-        throw new Error("Canvas not found");
-      }
-
-      // Get the generated card container
-      const cardContainer = document.querySelector(
-        ".generated-card-container",
-      ) as HTMLElement;
-      if (!cardContainer) {
-        throw new Error("Generated card container not found");
-      }
-
-      // Get the background image element
-      const backgroundImage = cardContainer.querySelector(
-        'img[src*="background"]',
-      ) as HTMLImageElement;
-      if (!backgroundImage) {
-        throw new Error("Background image not found");
-      }
-
-      const ctx = canvas.getContext("2d");
-      if (!ctx) {
-        throw new Error("Canvas context not found");
-      }
-
-      // Get the container's dimensions
-      const rect = cardContainer.getBoundingClientRect();
-      const metrics = getVideoCanvasMetrics(rect);
-      const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
-
-      canvas.width = VIDEO_WIDTH;
-      canvas.height = VIDEO_HEIGHT;
-
-      // Create MediaRecorder with WhatsApp-compatible settings
-      const stream = canvas.captureStream(15); // 15 FPS for WhatsApp compatibility
-      const mediaRecorder = new MediaRecorder(stream, {
-        mimeType: 'video/mp4; codecs="avc1.42E01E"', // H.264 Baseline Profile
-        videoBitsPerSecond: 200000, // 200kbps for WhatsApp compatibility
-        audioBitsPerSecond: 32000, // 32kbps audio for WhatsApp
-      });
-
-      const chunks: Blob[] = [];
-
-      mediaRecorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          chunks.push(event.data);
-        }
-      };
-
-      return new Promise((resolve) => {
-        mediaRecorder.onstop = () => {
-          const videoBlob = new Blob(chunks, { type: "video/mp4" });
-          updateRecordedMimeType(videoBlob.type);
-          const videoUrl = URL.createObjectURL(videoBlob);
-          setRecordedVideoBlob(videoBlob);
-
-          console.log("✅ Fallback video generated:", {
-            size: videoBlob.size,
-            type: videoBlob.type,
-            sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
-          });
-
-          resolve(videoUrl);
-        };
-
-        // Start recording
-        mediaRecorder.start();
-
-        // Record for 3 seconds
-        setTimeout(() => {
-          mediaRecorder.stop();
-        }, 3000);
-
-        // Draw content during recording
-        const drawFrame = () => {
-          // Clear canvas
-          ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-          // Draw the background image
-          if (
-            backgroundImage.naturalWidth > 0 &&
-            backgroundImage.naturalHeight > 0
-          ) {
-            ctx.drawImage(
-              backgroundImage,
-              offsetX,
-              offsetY,
-              drawWidth,
-              drawHeight,
-            );
-          }
-
-          // Draw the generated image
-          const generatedImg = new Image();
-          generatedImg.crossOrigin = "anonymous";
-          generatedImg.src = result;
-          ctx.drawImage(generatedImg, offsetX, offsetY, drawWidth, drawHeight);
-
-          // Draw the photo frame
-          const photoFrameImg = new Image();
-          photoFrameImg.crossOrigin = "anonymous";
-          photoFrameImg.src = "/photo-frame-story.png";
-          ctx.drawImage(photoFrameImg, offsetX, offsetY, drawWidth, drawHeight);
-
-          // Draw the greeting text
-          if (greeting) {
-            ctx.fillStyle = "#ffffff";
-            ctx.font = getGreetingFont();
-            ctx.textAlign = "center";
-            ctx.textBaseline = "middle";
-            ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
-          }
-        };
-
-        // Draw frames with mobile-optimized FPS
-        const interval = setInterval(drawFrame, 1000 / (isMobile ? 12 : 15)); // Mobile-optimized FPS
-
-        // Stop drawing after 3 seconds
-        setTimeout(() => {
-          clearInterval(interval);
-        }, 3000);
-      });
-    } catch (error) {
-      console.error("❌ Fallback video generation failed:", error);
-      return null;
-    }
-  };
 
   // Optimize video for WhatsApp compatibility
   const optimizeVideoForWhatsApp = async (videoBlob: Blob): Promise<string> => {
@@ -1415,297 +1091,7 @@ export default function Create() {
     });
   };
 
-  // Generate video using canvas-record with proper API
-  const generateVideoWithCanvasRecord = async (): Promise<string> => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        const canvas = canvasRef.current;
-        if (!canvas) {
-          reject(new Error("Canvas not found"));
-          return;
-        }
 
-        // Get the generated card container
-        const cardContainer = document.querySelector(
-          ".generated-card-container",
-        ) as HTMLElement;
-        if (!cardContainer) {
-          reject(new Error("Generated card container not found"));
-          return;
-        }
-
-        // Get the background image element
-        const backgroundImage = cardContainer.querySelector(
-          'img[src*="background"]',
-        ) as HTMLImageElement;
-        if (!backgroundImage) {
-          reject(new Error("Background image not found"));
-          return;
-        }
-
-        const ctx = canvas.getContext("2d");
-        if (!ctx) {
-          reject(new Error("Canvas context not found"));
-          return;
-        }
-
-        // Get the container's dimensions and compute 9:16 metrics
-        const rect = cardContainer.getBoundingClientRect();
-        const metrics = getVideoCanvasMetrics(rect);
-        const { offsetX, offsetY, drawWidth, drawHeight } = metrics;
-
-        canvas.width = VIDEO_WIDTH;
-        canvas.height = VIDEO_HEIGHT;
-
-        // Initialize Canvas Recorder with strict sharing-compatible settings
-        const recorder = new Recorder(ctx, {
-          extension: "mp4",
-          target: "in-browser",
-          encoderOptions: {
-            encoderOptions: {
-              // Strict WhatsApp compatibility settings
-              profile: "baseline",
-              level: "3.0",
-              bitrate: 500000, // 500kbps (WhatsApp prefers smaller files)
-              framerate: 24, // 24fps (WhatsApp standard)
-              keyframeInterval: 24,
-              pixelFormat: "yuv420p",
-              preset: "ultrafast",
-              crf: 28, // Higher compression for smaller file size
-              // Additional WhatsApp-specific settings
-              maxrate: 500000,
-              bufsize: 1000000,
-              g: 24, // GOP size
-              sc_threshold: 0,
-              // Ensure proper metadata for WhatsApp
-              movflags: "+faststart",
-              // Audio settings (even though we don't have audio)
-              audioCodec: "aac",
-              audioBitrate: 64000,
-              audioChannels: 1,
-              audioSampleRate: 22050,
-            },
-          },
-          onStatusChange: (status) => {
-            console.log("Recorder status:", status);
-            setRecorderStatus(String(status));
-          },
-        });
-
-        setCanvasRecorder(recorder);
-
-        // Start recording
-        await recorder.start({
-          filename: `diwali-postcard-${Date.now()}.mp4`,
-        });
-
-        console.log("📸 Starting 10-second video recording...");
-
-        // Record for 10 seconds at 24 FPS (WhatsApp standard)
-        const duration = 10000; // 10 seconds in milliseconds
-        const fps = 24; // WhatsApp standard frame rate
-        const frameInterval = 1000 / fps; // ~41.67ms per frame
-        const totalFrames = Math.floor(duration / frameInterval); // 240 frames
-
-        console.log(
-          `📹 Recording ${totalFrames} frames at ${fps} FPS for ${duration / 1000} seconds`,
-        );
-
-        // Pre-load images to avoid async issues
-        const generatedImg = new Image();
-        generatedImg.crossOrigin = "anonymous";
-        generatedImg.src = result;
-
-        const photoFrameImg = new Image();
-        photoFrameImg.crossOrigin = "anonymous";
-        photoFrameImg.src = "/photo-frame-story.png";
-
-        // Wait for images to load
-        await new Promise((resolve) => {
-          let loadedCount = 0;
-          const onLoad = () => {
-            loadedCount++;
-            if (loadedCount === 2) resolve(void 0);
-          };
-          generatedImg.onload = onLoad;
-          photoFrameImg.onload = onLoad;
-        });
-
-        // Animation loop with precise timing
-        let frameCount = 0;
-        let lastFrameTime = 0;
-
-        const animate = async (currentTime: number) => {
-          // Check if we should record this frame
-          if (currentTime - lastFrameTime >= frameInterval) {
-            // Clear canvas
-            ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
-
-            // Draw the background image
-            if (
-              backgroundImage.naturalWidth > 0 &&
-              backgroundImage.naturalHeight > 0
-            ) {
-              ctx.drawImage(
-                backgroundImage,
-                offsetX,
-                offsetY,
-                drawWidth,
-                drawHeight,
-              );
-            }
-
-            // Draw the generated image
-            ctx.drawImage(
-              generatedImg,
-              offsetX,
-              offsetY,
-              drawWidth,
-              drawHeight,
-            );
-
-            // Draw the photo frame
-            ctx.drawImage(
-              photoFrameImg,
-              offsetX,
-              offsetY,
-              drawWidth,
-              drawHeight,
-            );
-
-            // Draw the greeting text
-            if (greeting) {
-              ctx.fillStyle = "#ffffff";
-              ctx.font = getGreetingFont();
-              ctx.textAlign = "center";
-              ctx.textBaseline = "middle";
-              ctx.fillText(greeting, VIDEO_WIDTH / 2, VIDEO_HEIGHT - 80);
-            }
-
-            // Record this frame
-            recorder.step();
-
-            frameCount++;
-            lastFrameTime = currentTime;
-
-            const progress = Math.round((frameCount / totalFrames) * 100);
-            console.log(
-              `📸 Frame ${frameCount}/${totalFrames} recorded (${progress}%)`,
-            );
-
-            // Update UI with progress
-            setRecorderStatus(`recording-${progress}`);
-          }
-
-          // Check if we've recorded enough frames
-          if (frameCount >= totalFrames) {
-            console.log("🎬 Recording complete, stopping...");
-            // Stop recording
-            const videoData = await recorder.stop();
-            const videoBlob = new Blob([videoData as BlobPart], {
-              type: "video/mp4",
-            });
-            updateRecordedMimeType(videoBlob.type);
-
-            console.log("✅ Video recording completed:", {
-              size: videoBlob.size,
-              type: videoBlob.type,
-              sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
-              frameCount: frameCount,
-              expectedFrames: totalFrames,
-            });
-
-            // Validate and optimize for WhatsApp
-            const optimizedVideoUrl = await optimizeVideoForWhatsApp(videoBlob);
-            resolve(optimizedVideoUrl);
-            return;
-          }
-
-          // Continue animation
-          requestAnimationFrame(animate);
-        };
-
-        // Start animation
-        requestAnimationFrame(animate);
-
-        // Fallback timeout to ensure we stop recording after exactly 10 seconds
-        setTimeout(async () => {
-          if (frameCount < totalFrames) {
-            console.log("⏰ Timeout reached, stopping recording...");
-            try {
-              const videoData = await recorder.stop();
-              const videoBlob = new Blob([videoData as BlobPart], {
-                type: "video/mp4",
-              });
-              updateRecordedMimeType(videoBlob.type);
-
-              console.log("✅ Video recording completed (timeout):", {
-                size: videoBlob.size,
-                type: videoBlob.type,
-                sizeInMB: (videoBlob.size / (1024 * 1024)).toFixed(2),
-                frameCount: frameCount,
-                expectedFrames: totalFrames,
-              });
-
-              const optimizedVideoUrl =
-                await optimizeVideoForWhatsApp(videoBlob);
-              resolve(optimizedVideoUrl);
-            } catch (error) {
-              console.error("Error in timeout recording:", error);
-              reject(error);
-            }
-          }
-        }, duration + 1000); // 1 second buffer
-      } catch (error) {
-        console.error("Error in canvas-record video generation:", error);
-        reject(error);
-      }
-    });
-  };
-
-  // VIDEO FUNCTIONALITY COMMENTED OUT
-  // Start manual recording
-  // const startRecording = async () => {
-  //   if (!result || !resultData) {
-  //     console.error("Missing result data");
-  //     return;
-  //   }
-
-  //   try {
-  //     setVideoGenerationError(null);
-  //     setImageDownloadError(null);
-  //     setIsRecording(true);
-  //     setRecordingProgress(0);
-  //     console.log("🎬 Starting manual video recording...");
-
-  //     // Track video generation start
-  //     if (typeof window !== "undefined" && (window as any).fbq) {
-  //       (window as any).fbq("track", "InitiateCheckout", {
-  //         content_name: "Diwali Postcard Video",
-  //         content_category: "Video Generation",
-  //         value: 0,
-  //         currency: "INR",
-  //       });
-  //     }
-
-  //     // Track with Google Tag Manager
-  //     if (typeof window !== "undefined" && (window as any).dataLayer) {
-  //       (window as any).dataLayer.push({
-  //         event: "video_generation_start",
-  //         content_name: "Diwali Postcard Video",
-  //         content_category: "Video Generation",
-  //         value: 0,
-  //         currency: "INR",
-  //       });
-  //     }
-
-  //     // Initialize canvas recorder
-  //     await initializeCanvasRecorder();
-  //   } catch (error) {
-  //     console.error("❌ Error starting video recording:", error);
-  //     setIsRecording(false);
-  //   }
-  // };
 
   // Stop manual recording with proper cleanup
   const stopRecording = async () => {
@@ -1970,8 +1356,6 @@ export default function Create() {
     rect: DOMRect,
     metrics: VideoCanvasMetrics,
   ) => {
-    const whatsappSize = 1080; // WhatsApp video size
-    const scale = metrics.scale;
     let animationId: number | null = null;
     let startTime = Date.now();
     let lastFrameTime = 0;
@@ -2158,13 +1542,13 @@ export default function Create() {
     // For mobile devices, use MediaRecorder fallback
     if (isMobile) {
       console.log("📱 Mobile detected, using MediaRecorder fallback");
-      const metrics = getVideoCanvasMetrics(rect);
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
         backgroundImage,
         rect,
-        metrics,
+        scale,
+        whatsappSize,
       );
       return;
     }
@@ -2176,13 +1560,13 @@ export default function Create() {
       console.warn(
         "⚠️ Canvas-record not available, falling back to MediaRecorder",
       );
-      const metrics = getVideoCanvasMetrics(rect);
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
         backgroundImage,
         rect,
-        metrics,
+        scale,
+        whatsappSize,
       );
       return;
     }
@@ -2245,13 +1629,13 @@ export default function Create() {
         "❌ Canvas recorder failed, falling back to MediaRecorder:",
         error,
       );
-      const metrics = getVideoCanvasMetrics(rect);
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
         backgroundImage,
         rect,
-        metrics,
+        scale,
+        whatsappSize,
       );
     }
   };
@@ -2265,8 +1649,6 @@ export default function Create() {
     scale: number,
     whatsappSize: number,
   ) => {
-    const targetWidth = VIDEO_WIDTH;
-    const targetHeight = VIDEO_HEIGHT;
     let animationId: number | null = null;
     let startTime = Date.now();
     let lastFrameTime = 0;
@@ -3807,31 +3189,15 @@ export default function Create() {
       const personImageUrl = await uploadPersonImageToCloudinary(photoData);
       console.log("Person image uploaded:", personImageUrl);
 
-      // Debug selected dish
-      console.log("Selected dish:", selectedDish);
-      console.log("Dish image URL:", selectedDish?.image);
-      
-      // Validate required fields
-      if (!personImageUrl) {
-        throw new Error("Person image URL is missing");
-      }
-      if (!selectedDish?.image) {
-        throw new Error("Dish image is missing - please select a dish");
-      }
-
-      const requestBody = {
-        personImageUrl: personImageUrl,
-        dishImageUrl: selectedDish.image,
-        background: bg,
-        greeting,
-      };
-      
-      console.log("Sending request to /api/generate with body:", requestBody);
-
       const res = await fetch("/api/generate", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
+        body: JSON.stringify({
+          personImageUrl: personImageUrl,
+          dishImageUrl: selectedDish.image,
+          background: bg,
+          greeting,
+        }),
       });
       if (!res.ok) {
         const errorData = await res.json().catch(() => ({}));
@@ -3993,27 +3359,7 @@ export default function Create() {
                   Use a clear selfie or portrait.
                 </p>
                 <div className="rounded-xl border-2 border-dashed border-orange-300  p-6 flex flex-col items-center justify-center text-center">
-                  {isOptimizing ? (
-                    <div className="flex flex-col items-center gap-4">
-                      <div className="relative">
-                        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600"></div>
-                        <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-6 h-6 bg-orange-100 rounded-full"></div>
-                        </div>
-                      </div>
-                      <div className="text-orange-800 font-medium">
-                        Optimizing your image...
-                      </div>
-                      <div className="text-sm text-orange-700 text-center">
-                        Compressing with TinyPNG API
-                        <br />
-                        This may take a few seconds
-                      </div>
-                      <div className="w-full max-w-xs bg-orange-200 rounded-full h-2">
-                        <div className="bg-orange-600 h-2 rounded-full animate-pulse" style={{width: '60%'}}></div>
-                      </div>
-                    </div>
-                  ) : photoData ? (
+                  {photoData ? (
                     <img
                       src={photoData}
                       alt="preview"
@@ -4033,18 +3379,16 @@ export default function Create() {
                     onChange={(e) =>
                       handleFile(e.target.files?.[0] || undefined)
                     }
-                    disabled={isOptimizing}
                   />
                   <Button
                     type="button"
-                    className="mt-4 bg-orange-600 hover:bg-orange-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="mt-4 bg-orange-600 hover:bg-orange-700"
                     onClick={() => {
                       setUploadError(null);
                       fileRef.current?.click();
                     }}
-                    disabled={isOptimizing}
                   >
-                    {isOptimizing ? "Processing..." : "Choose File"}
+                    Choose File
                   </Button>
                 </div>
 
@@ -4056,26 +3400,6 @@ export default function Create() {
                     </p>
                   </div>
                 )}
-
-                {/* Optimization result display */}
-                {optimizationResult && (
-                  <div className="mt-4 p-3 bg-green-100 border border-green-300 rounded-lg">
-                    <div className="flex items-center gap-2 mb-2">
-                      <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                      <p className="text-green-700 text-sm font-medium">
-                        Image optimized successfully!
-                      </p>
-                    </div>
-                    <div className="text-xs text-green-600 space-y-1">
-                      <div>Original: {(optimizationResult.originalSize / (1024 * 1024)).toFixed(2)} MB</div>
-                      <div>Optimized: {(optimizationResult.optimizedSize / (1024 * 1024)).toFixed(2)} MB</div>
-                      <div className="font-medium">
-                        Saved: {optimizationResult.compressionRatio.toFixed(1)}% space
-                      </div>
-                    </div>
-                  </div>
-                )}
-
                 {/* File size info */}
                 <p className="text-xs text-orange-900/60 mt-2">
                   Maximum file size: 10MB (will be optimized automatically)
