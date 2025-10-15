@@ -3635,9 +3635,16 @@ export default function Create() {
 
   const uploadPersonImageToCloudinary = async (base64Data: string): Promise<string> => {
     try {
-      // Convert base64 to blob
-      const base64 = base64Data.split(',')[1];
-      const mimeType = base64Data.split(',')[0].split(':')[1].split(';')[0];
+      // Downscale/compress image on client to avoid large uploads (prevents 413)
+      const optimizedDataUrl = await downscaleImageDataUrl(base64Data, {
+        maxDimension: 2048,
+        outputMimeType: 'image/jpeg',
+        quality: 0.9,
+      });
+
+      // Convert optimized base64 to blob
+      const base64 = optimizedDataUrl.split(',')[1];
+      const mimeType = optimizedDataUrl.split(',')[0].split(':')[1].split(';')[0];
       const byteCharacters = atob(base64);
       const byteNumbers = new Array(byteCharacters.length);
       for (let i = 0; i < byteCharacters.length; i++) {
@@ -3676,6 +3683,50 @@ export default function Create() {
       console.error("Error uploading person image to Cloudinary:", error);
       throw error;
     }
+  };
+
+  // Downscale and compress a data URL on client to keep payloads small
+  const downscaleImageDataUrl = async (
+    dataUrl: string,
+    options: { maxDimension: number; outputMimeType: string; quality: number },
+  ): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      try {
+        const image = new Image();
+        image.onload = () => {
+          const { maxDimension, outputMimeType, quality } = options;
+
+          let targetWidth = image.naturalWidth;
+          let targetHeight = image.naturalHeight;
+
+          const maxSide = Math.max(targetWidth, targetHeight);
+          if (maxSide > maxDimension) {
+            const scale = maxDimension / maxSide;
+            targetWidth = Math.round(targetWidth * scale);
+            targetHeight = Math.round(targetHeight * scale);
+          }
+
+          const canvas = document.createElement('canvas');
+          canvas.width = targetWidth;
+          canvas.height = targetHeight;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            reject(new Error('Canvas 2D context not available'));
+            return;
+          }
+
+          ctx.drawImage(image, 0, 0, targetWidth, targetHeight);
+
+          // Convert to compressed data URL
+          const out = canvas.toDataURL(outputMimeType, quality);
+          resolve(out);
+        };
+        image.onerror = (e) => reject(new Error('Failed to load image for downscaling'));
+        image.src = dataUrl;
+      } catch (err) {
+        reject(err instanceof Error ? err : new Error(String(err)));
+      }
+    });
   };
 
   const generate = async () => {
