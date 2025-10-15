@@ -2841,8 +2841,8 @@ export default function Create() {
         shadowOffsetY: number;
       } | null = null;
 
-      ctx.fillStyle = "#1f2937";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      // Set transparent background instead of dark gray
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
       let backgroundDrawn = false;
 
@@ -2868,16 +2868,8 @@ export default function Create() {
       }
 
       if (!backgroundDrawn) {
-        const gradient = ctx.createLinearGradient(
-          offsetX,
-          offsetY,
-          offsetX + drawWidth,
-          offsetY + drawHeight,
-        );
-        gradient.addColorStop(0, "#fb923c");
-        gradient.addColorStop(1, "#f97316");
-        ctx.fillStyle = gradient;
-        ctx.fillRect(offsetX, offsetY, drawWidth, drawHeight);
+        // Don't draw a fallback background - keep it transparent
+        // This prevents unwanted colored backgrounds in downloaded images
 
         if (selectedBackground?.fallback) {
           ctx.save();
