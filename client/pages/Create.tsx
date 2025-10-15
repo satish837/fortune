@@ -232,23 +232,23 @@ const BACKGROUNDS = [
   {
     id: "1",
     name: "Festive Celebration",
-    video: "/background/1.mp4",
+    image: "/background-static/1.jpg",
     fallback: "🎆",
   },
   {
     id: "2",
     name: "Golden Lights",
-    video: "/background/2.mp4",
+    image: "/background-static/2.jpg",
     fallback: "✨",
   },
-  { id: "3", name: "Warm Glow", video: "/background/3.mp4", fallback: "🕯️" },
+  { id: "3", name: "Warm Glow", image: "/background-static/3.jpg", fallback: "🕯️" },
   {
     id: "4",
     name: "Diwali Sparkle",
-    video: "/background/4.mp4",
+    image: "/background-static/4.jpg",
     fallback: "��",
   },
-  { id: "5", name: "Festive Joy", video: "/background/5.mp4", fallback: "🎉" },
+  { id: "5", name: "Festive Joy", image: "/background-static/5.jpg", fallback: "🎉" },
 ];
 
 const PRESET_GREETINGS = [
@@ -257,8 +257,8 @@ const PRESET_GREETINGS = [
   "Sharing the flavours of #DiwaliKaFortune with you",
 ];
 
-const LOADER_STEP_HOLD_MS = 3500;
-const LOADER_STEP_FADE_MS = 700;
+const LOADER_STEP_HOLD_MS = 2000;
+const LOADER_STEP_FADE_MS = 500;
 const PROGRESS_INCREMENT_INTERVAL_MS = 1500;
 
 const delay = (ms: number) =>
@@ -423,12 +423,9 @@ export default function Create() {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [resultData, setResultData] = useState<any>(null);
-  const [videoLoading, setVideoLoading] = useState<{ [key: string]: boolean }>(
-    {},
-  );
-  const [videoError, setVideoError] = useState<{ [key: string]: boolean }>({});
   const [generationStep, setGenerationStep] = useState(0);
   const [isFading, setIsFading] = useState(false);
+  const [isRotating, setIsRotating] = useState(false);
   const [generationProgress, setGenerationProgress] = useState(0);
   const [isRecording, setIsRecording] = useState(false);
   const [recordedVideoUrl, setRecordedVideoUrl] = useState<string | null>(null);
@@ -468,7 +465,6 @@ export default function Create() {
   );
 
   const fileRef = useRef<HTMLInputElement>(null);
-  const videoRefs = useRef<{ [key: string]: HTMLVideoElement | null }>({});
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordedChunksRef = useRef<Blob[]>([]);
@@ -809,27 +805,6 @@ export default function Create() {
     navigate("/", { replace: true });
   };
 
-  // Start videos when background selection step is active
-  useEffect(() => {
-    if (step === 2) {
-      // Small delay to ensure videos are rendered
-      setTimeout(() => {
-        BACKGROUNDS.forEach((background) => {
-          const video = videoRefs.current[background.id];
-          if (video) {
-            console.log(`Attempting to play video: ${background.video}`);
-            video.currentTime = 0;
-            video.play().catch((error) => {
-              console.log(
-                `Autoplay blocked for video: ${background.video}`,
-                error,
-              );
-            });
-          }
-        });
-      }, 500);
-    }
-  }, [step]);
 
   useEffect(() => {
     return () => {
@@ -837,9 +812,9 @@ export default function Create() {
     };
   }, [clearProgressInterval]);
 
-  // Cycle through generation steps while loading
+  // Cycle through generation steps while rotating
   useEffect(() => {
-    if (!loading || manualLoaderControlRef.current) {
+    if (!isRotating || manualLoaderControlRef.current) {
       return;
     }
 
@@ -865,7 +840,7 @@ export default function Create() {
       clearTimeout(holdTimeout);
       clearTimeout(fadeTimeout);
     };
-  }, [loading]);
+  }, [isRotating]);
 
   // Auto-start video recording when result is generated
   useEffect(() => {
@@ -1199,17 +1174,12 @@ export default function Create() {
         throw new Error("Generated card container not found");
       }
 
-      // Get the background video element
-      const backgroundVideo = cardContainer.querySelector(
-        'video[src*="background"]',
-      ) as HTMLVideoElement;
-      if (!backgroundVideo) {
-        throw new Error("Background video not found");
-      }
-
-      // Ensure video is playing
-      if (backgroundVideo.paused) {
-        backgroundVideo.play().catch(console.error);
+      // Get the background image element
+      const backgroundImage = cardContainer.querySelector(
+        'img[src*="background"]',
+      ) as HTMLImageElement;
+      if (!backgroundImage) {
+        throw new Error("Background image not found");
       }
 
       const ctx = canvas.getContext("2d");
@@ -1270,13 +1240,13 @@ export default function Create() {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-          // Draw the background video
+          // Draw the background image
           if (
-            backgroundVideo.videoWidth > 0 &&
-            backgroundVideo.videoHeight > 0
+            backgroundImage.naturalWidth > 0 &&
+            backgroundImage.naturalHeight > 0
           ) {
             ctx.drawImage(
-              backgroundVideo,
+              backgroundImage,
               offsetX,
               offsetY,
               drawWidth,
@@ -1455,18 +1425,13 @@ export default function Create() {
           return;
         }
 
-        // Get the background video element
-        const backgroundVideo = cardContainer.querySelector(
-          'video[src*="background"]',
-        ) as HTMLVideoElement;
-        if (!backgroundVideo) {
-          reject(new Error("Background video not found"));
+        // Get the background image element
+        const backgroundImage = cardContainer.querySelector(
+          'img[src*="background"]',
+        ) as HTMLImageElement;
+        if (!backgroundImage) {
+          reject(new Error("Background image not found"));
           return;
-        }
-
-        // Ensure video is playing
-        if (backgroundVideo.paused) {
-          backgroundVideo.play().catch(console.error);
         }
 
         const ctx = canvas.getContext("2d");
@@ -1567,13 +1532,13 @@ export default function Create() {
             // Clear canvas
             ctx.clearRect(0, 0, VIDEO_WIDTH, VIDEO_HEIGHT);
 
-            // Draw the background video
+            // Draw the background image
             if (
-              backgroundVideo.videoWidth > 0 &&
-              backgroundVideo.videoHeight > 0
+              backgroundImage.naturalWidth > 0 &&
+              backgroundImage.naturalHeight > 0
             ) {
               ctx.drawImage(
-                backgroundVideo,
+                backgroundImage,
                 offsetX,
                 offsetY,
                 drawWidth,
@@ -1876,7 +1841,7 @@ export default function Create() {
   const initializeMobileVideoRecorder = async (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    backgroundVideo: HTMLVideoElement,
+    backgroundImage: HTMLImageElement,
     rect: DOMRect,
     metrics: VideoCanvasMetrics,
   ) => {
@@ -1978,7 +1943,7 @@ export default function Create() {
       console.log("📱 Mobile video recording started");
 
       // Start the animation loop
-      startMobileAnimationLoop(canvas, ctx, backgroundVideo, rect, metrics);
+      startMobileAnimationLoop(canvas, ctx, backgroundImage, rect, metrics);
     } catch (error) {
       console.error("❌ Mobile video recorder initialization failed:", error);
       setVideoGenerationError(
@@ -1991,7 +1956,7 @@ export default function Create() {
   const startMobileAnimationLoop = (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    backgroundVideo: HTMLVideoElement,
+    backgroundImage: HTMLImageElement,
     rect: DOMRect,
     metrics: VideoCanvasMetrics,
   ) => {
@@ -2062,13 +2027,13 @@ export default function Create() {
               const offsetX = (whatsappSize - rect.width * scale) / 2;
               const offsetY = (whatsappSize - rect.height * scale) / 2;
 
-              // Draw background video
+              // Draw background image
               if (
-                backgroundVideo.videoWidth > 0 &&
-                backgroundVideo.videoHeight > 0
+                backgroundImage.naturalWidth > 0 &&
+                backgroundImage.naturalHeight > 0
               ) {
                 ctx.drawImage(
-                  backgroundVideo,
+                  backgroundImage,
                   offsetX,
                   offsetY,
                   rect.width * scale,
@@ -2153,17 +2118,12 @@ export default function Create() {
       throw new Error("Generated card container not found");
     }
 
-    // Get the background video element
-    const backgroundVideo = cardContainer.querySelector(
-      'video[src*="background"]',
-    ) as HTMLVideoElement;
-    if (!backgroundVideo) {
-      throw new Error("Background video not found");
-    }
-
-    // Ensure video is playing
-    if (backgroundVideo.paused) {
-      backgroundVideo.play().catch(console.error);
+    // Get the background image element
+    const backgroundImage = cardContainer.querySelector(
+      'img[src*="background"]',
+    ) as HTMLImageElement;
+    if (!backgroundImage) {
+      throw new Error("Background image not found");
     }
 
     const ctx = canvas.getContext("2d");
@@ -2189,7 +2149,7 @@ export default function Create() {
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
-        backgroundVideo,
+        backgroundImage,
         rect,
         scale,
         whatsappSize,
@@ -2207,7 +2167,7 @@ export default function Create() {
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
-        backgroundVideo,
+        backgroundImage,
         rect,
         scale,
         whatsappSize,
@@ -2263,7 +2223,7 @@ export default function Create() {
       startManualAnimationLoop(
         canvas,
         ctx,
-        backgroundVideo,
+        backgroundImage,
         rect,
         scale,
         whatsappSize,
@@ -2276,7 +2236,7 @@ export default function Create() {
       await initializeMobileVideoRecorder(
         canvas,
         ctx,
-        backgroundVideo,
+        backgroundImage,
         rect,
         scale,
         whatsappSize,
@@ -2288,7 +2248,7 @@ export default function Create() {
   const startManualAnimationLoop = (
     canvas: HTMLCanvasElement,
     ctx: CanvasRenderingContext2D,
-    backgroundVideo: HTMLVideoElement,
+    backgroundImage: HTMLImageElement,
     rect: DOMRect,
     scale: number,
     whatsappSize: number,
@@ -2360,13 +2320,13 @@ export default function Create() {
               const offsetX = (targetWidth - rect.width * scale) / 2;
               const offsetY = (targetHeight - rect.height * scale) / 2;
 
-              // Draw the background video
+              // Draw the background image
               if (
-                backgroundVideo.videoWidth > 0 &&
-                backgroundVideo.videoHeight > 0
+                backgroundImage.naturalWidth > 0 &&
+                backgroundImage.naturalHeight > 0
               ) {
                 ctx.drawImage(
-                  backgroundVideo,
+                  backgroundImage,
                   offsetX,
                   offsetY,
                   rect.width * scale,
@@ -2467,19 +2427,14 @@ export default function Create() {
         return;
       }
 
-      // Get the background video element
-      const backgroundVideo = cardContainer.querySelector(
-        'video[src*="background"]',
-      ) as HTMLVideoElement;
-      if (!backgroundVideo) {
-        console.error("Background video not found");
+      // Get the background image element
+      const backgroundImage = cardContainer.querySelector(
+        'img[src*="background"]',
+      ) as HTMLImageElement;
+      if (!backgroundImage) {
+        console.error("Background image not found");
         setIsRecording(false);
         return;
-      }
-
-      // Ensure video is playing
-      if (backgroundVideo.paused) {
-        backgroundVideo.play().catch(console.error);
       }
 
       // Create a canvas to capture the container
@@ -2617,24 +2572,24 @@ export default function Create() {
           // Clear canvas
           ctx.clearRect(0, 0, canvas.width / scale, canvas.height / scale);
 
-          // First, draw the background video
+          // First, draw the background image
           if (
-            backgroundVideo.videoWidth > 0 &&
-            backgroundVideo.videoHeight > 0
+            backgroundImage.naturalWidth > 0 &&
+            backgroundImage.naturalHeight > 0
           ) {
             console.log(
-              "Drawing background video:",
-              backgroundVideo.videoWidth,
+              "Drawing background image:",
+              backgroundImage.naturalWidth,
               "x",
-              backgroundVideo.videoHeight,
+              backgroundImage.naturalHeight,
             );
-            ctx.drawImage(backgroundVideo, 0, 0, rect.width, rect.height);
+            ctx.drawImage(backgroundImage, 0, 0, rect.width, rect.height);
           } else {
             console.log(
-              "Background video not ready:",
-              backgroundVideo.videoWidth,
+              "Background image not ready:",
+              backgroundImage.naturalWidth,
               "x",
-              backgroundVideo.videoHeight,
+              backgroundImage.naturalHeight,
             );
           }
 
@@ -2827,9 +2782,9 @@ export default function Create() {
         };
       };
 
-      const backgroundVideo = cardContainer.querySelector(
-        'video[src*="background"]',
-      ) as HTMLVideoElement | null;
+      const backgroundImage = cardContainer.querySelector(
+        'img[src*="background"]',
+      ) as HTMLImageElement | null;
       const frameElement = cardContainer.querySelector(
         'img[alt="photo frame"]',
       ) as HTMLImageElement | null;
@@ -2865,16 +2820,15 @@ export default function Create() {
       ctx.rect(offsetX, offsetY, drawWidth, drawHeight);
       ctx.clip();
 
-      if (backgroundVideo) {
+      if (backgroundImage) {
         try {
-          await waitForVideoFrame(backgroundVideo);
           if (
-            backgroundVideo.videoWidth > 0 &&
-            backgroundVideo.videoHeight > 0
+            backgroundImage.naturalWidth > 0 &&
+            backgroundImage.naturalHeight > 0
           ) {
-            const videoRect = backgroundVideo.getBoundingClientRect();
-            const { x, y, width, height } = mapRectToCanvas(videoRect);
-            ctx.drawImage(backgroundVideo, x, y, width, height);
+            const imageRect = backgroundImage.getBoundingClientRect();
+            const { x, y, width, height } = mapRectToCanvas(imageRect);
+            ctx.drawImage(backgroundImage, x, y, width, height);
             backgroundDrawn = true;
           }
         } catch (error) {
@@ -3671,10 +3625,19 @@ export default function Create() {
     }
   };
 
+  const stopRotation = () => {
+    setIsRotating(false);
+  };
+
+  const startRotation = () => {
+    setIsRotating(true);
+  };
+
   const generate = async () => {
     if (!photoData || !selectedDish || !consent) return;
     manualLoaderControlRef.current = true;
     setLoading(true);
+    setIsRotating(true); // Start the rotation
     setResult(null);
     setGenerationStep(0);
     setGenerationProgress(0);
@@ -3702,17 +3665,8 @@ export default function Create() {
     }
 
     try {
-      // Simulate generation steps messaging
-      for (let i = 0; i < GENERATION_STEPS.length; i++) {
-        setGenerationStep(i);
-        setIsFading(false);
-
-        await delay(LOADER_STEP_HOLD_MS);
-        setIsFading(true);
-        await delay(LOADER_STEP_FADE_MS);
-      }
-
-      setIsFading(false);
+      // Let the useEffect handle the generation steps rotation
+      // No need to manually cycle through steps here
 
       const res = await fetch("/api/generate", {
         method: "POST",
@@ -3725,7 +3679,11 @@ export default function Create() {
         }),
       });
       if (!res.ok) {
-        throw new Error(`HTTP ${res.status}`);
+        const errorData = await res.json().catch(() => ({}));
+        if (res.status === 422 && errorData.type === 'content_policy_violation') {
+          throw new Error('The image you uploaded may contain content that violates our content policy. Please try with a different image.');
+        }
+        throw new Error(`HTTP ${res.status}: ${errorData.error || 'Unknown error'}`);
       }
       const json = await res.json();
 
@@ -3766,6 +3724,7 @@ export default function Create() {
       clearProgressInterval();
       manualLoaderControlRef.current = false;
       setLoading(false);
+      // Keep rotation going - don't stop it here
     }
   };
 
@@ -3993,15 +3952,6 @@ export default function Create() {
                     key={b.id}
                     onClick={() => {
                       setBg(b.id);
-                      // Try to play video on click
-                      const video = videoRefs.current[b.id];
-                      if (video) {
-                        video.play().catch(() => {
-                          console.log(
-                            `Could not play video on click: ${b.video}`,
-                          );
-                        });
-                      }
                     }}
                     className={cn(
                       "group overflow-hidden rounded-xl border h-28 relative bg-gradient-to-br from-orange-100 to-amber-200",
@@ -4010,51 +3960,17 @@ export default function Create() {
                         : "border-orange-200",
                     )}
                   >
-                    <video
-                      ref={(el) => {
-                        videoRefs.current[b.id] = el;
-                      }}
-                      src={b.video}
+                    <img
+                      src={b.image}
+                      alt={b.name}
                       className="w-full h-full object-cover"
-                      muted
-                      loop
-                      autoPlay
-                      playsInline
-                      preload="metadata"
-                      onLoadStart={() => {
-                        console.log(`Loading video: ${b.video}`);
-                        setVideoLoading((prev) => ({ ...prev, [b.id]: true }));
-                      }}
-                      onLoadedData={() => {
-                        console.log(`Video data loaded: ${b.video}`);
-                        setVideoLoading((prev) => ({ ...prev, [b.id]: false }));
-                        setVideoError((prev) => ({ ...prev, [b.id]: false }));
-                      }}
-                      onCanPlay={() => {
-                        console.log(`Video can play: ${b.video}`);
-                        setVideoError((prev) => ({ ...prev, [b.id]: false }));
-                      }}
-                      onPlay={() => {
-                        console.log(`Video playing: ${b.video}`);
+                      onLoad={() => {
+                        console.log(`Image loaded: ${b.image}`);
                       }}
                       onError={(e) => {
-                        console.error(`Video error for ${b.video}:`, e);
-                        setVideoLoading((prev) => ({ ...prev, [b.id]: false }));
-                        setVideoError((prev) => ({ ...prev, [b.id]: true }));
+                        console.error(`Error loading image: ${b.image}`, e);
                       }}
                     />
-                    {/* Loading indicator */}
-                    {videoLoading[b.id] && (
-                      <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                        <div className="w-6 h-6 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      </div>
-                    )}
-                    {/* Fallback content when video fails to load */}
-                    {videoError[b.id] && (
-                      <div className="absolute inset-0 flex items-center justify-center text-4xl bg-gradient-to-br from-orange-200 to-amber-300">
-                        {b.fallback}
-                      </div>
-                    )}
                     <div className="absolute bottom-0 left-0 right-0 bg-black/50 text-white p-2">
                       <span className="text-xs font-medium">{b.name}</span>
                     </div>
@@ -4222,6 +4138,25 @@ export default function Create() {
                         ? `Processing... ${Math.round(generationProgress)}%`
                         : "Complete!"}
                     </div>
+
+                    {/* Rotation Control Buttons */}
+                    <div className="mt-4 flex justify-center gap-2">
+                      {isRotating ? (
+                        <button
+                          onClick={stopRotation}
+                          className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 text-sm font-medium rounded-lg transition-colors duration-200"
+                        >
+                          Stop Rotation
+                        </button>
+                      ) : (
+                        <button
+                          onClick={startRotation}
+                          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
+                        >
+                          Start Rotation
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               )}
@@ -4251,17 +4186,14 @@ export default function Create() {
                   {/* Content inside the frame */}
                   <div className="absolute inset-0 flex items-center justify-center px-6 sm:px-8">
                     <div className="relative w-full h-full">
-                      {/* Video Background */}
-                      <video
+                      {/* Image Background */}
+                      <img
                         src={
-                          resultData?.background_video ||
-                          selectedBackground.video
+                          resultData?.background_image ||
+                          selectedBackground.image
                         }
+                        alt="Background"
                         className="absolute inset-0 w-full h-full object-cover rounded-lg"
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
                       />
                       {/* Generated Image Overlay */}
                       <div
@@ -4301,26 +4233,7 @@ export default function Create() {
               </div>
 
               {/* Upload Progress Indicator */}
-              {downloading && (
-                <div className="text-center mb-4">
-                  <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg mb-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    Uploading video to Cloudinary...
-                  </div>
-                  <div className="text-xs text-gray-500">
-                    This may take a few moments depending on video size.
-                  </div>
-                </div>
-              )}
-
-              {videoUploading && (
-                <div className="text-center mb-4">
-                  <div className="inline-flex items-center px-4 py-2 bg-blue-50 text-blue-700 rounded-lg">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-600 mr-2"></div>
-                    Uploading video to cloud...
-                  </div>
-                </div>
-              )}
+              
 
               <div className="flex flex-col sm:flex-row gap-3 justify-center mt-6">
                 <div className="flex flex-col gap-2 w-full sm:w-auto">
