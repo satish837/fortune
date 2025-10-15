@@ -4139,24 +4139,7 @@ export default function Create() {
                         : "Complete!"}
                     </div>
 
-                    {/* Rotation Control Buttons */}
-                    <div className="mt-4 flex justify-center gap-2">
-                      {isRotating ? (
-                        <button
-                          onClick={stopRotation}
-                          className="px-4 py-2 bg-orange-100 hover:bg-orange-200 text-orange-800 text-sm font-medium rounded-lg transition-colors duration-200"
-                        >
-                          Stop Rotation
-                        </button>
-                      ) : (
-                        <button
-                          onClick={startRotation}
-                          className="px-4 py-2 bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium rounded-lg transition-colors duration-200"
-                        >
-                          Start Rotation
-                        </button>
-                      )}
-                    </div>
+                    
                   </div>
                 </div>
               )}
