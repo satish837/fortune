@@ -3653,21 +3653,32 @@ export default function Create() {
       const byteArray = new Uint8Array(byteNumbers);
       const blob = new Blob([byteArray], { type: mimeType });
 
-      // Get Cloudinary config
-      const configRes = await fetch("/api/cloudinary-config");
-      if (!configRes.ok) {
-        throw new Error("Failed to get Cloudinary config");
-      }
-      const config = await configRes.json();
+      // Get Cloudinary signature for signed upload
+      const signatureRes = await fetch("/api/cloudinary-signature", {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          folder: 'diwali-postcards/person-images',
+          public_id: `person-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`
+        })
+      });
 
-      // Create form data
+      if (!signatureRes.ok) {
+        throw new Error("Failed to get Cloudinary signature");
+      }
+      const signatureData = await signatureRes.json();
+
+      // Create form data for signed upload
       const formData = new FormData();
       formData.append('file', blob, 'person-image.jpg');
-      formData.append('upload_preset', config.uploadPreset);
+      formData.append('api_key', signatureData.apiKey);
+      formData.append('timestamp', signatureData.timestamp);
+      formData.append('signature', signatureData.signature);
       formData.append('folder', 'diwali-postcards/person-images');
+      formData.append('public_id', signatureData.publicId);
 
-      // Upload to Cloudinary
-      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${config.cloudName}/image/upload`, {
+      // Upload to Cloudinary with signed upload
+      const uploadRes = await fetch(`https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`, {
         method: 'POST',
         body: formData,
       });
